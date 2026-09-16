@@ -1,0 +1,1524 @@
+{
+  "requirements": [
+    {
+      "id": "RF01",
+      "text": "Registrar clientes y usuarios internos con nombre, correo único, contraseña protegida, teléfono y estado.",
+      "cases": [
+        "CU01"
+      ]
+    },
+    {
+      "id": "RF02",
+      "text": "Consultar, actualizar, suspender y reactivar cuentas, revocando sesiones al suspender y conservando auditoría.",
+      "cases": [
+        "CU01",
+        "CU02"
+      ]
+    },
+    {
+      "id": "RF03",
+      "text": "Actualizar perfil, direcciones y medidas declaradas o corregidas por el cliente.",
+      "cases": [
+        "CU07",
+        "CU25"
+      ]
+    },
+    {
+      "id": "RF04",
+      "text": "Iniciar, renovar y cerrar sesión con credenciales, JWT de acceso de corta duración y renovación revocable.",
+      "cases": [
+        "CU02"
+      ]
+    },
+    {
+      "id": "RF05",
+      "text": "Crear roles y asignarlos a usuarios mediante relaciones explícitas.",
+      "cases": [
+        "CU03"
+      ]
+    },
+    {
+      "id": "RF06",
+      "text": "Comprobar permisos por recurso y acción, limitando al personal a las ubicaciones asignadas.",
+      "cases": [
+        "CU02",
+        "CU03",
+        "CU08"
+      ]
+    },
+    {
+      "id": "RF07",
+      "text": "Registrar prendas con categoría, colección, marca, material y descripción.",
+      "cases": [
+        "CU04"
+      ]
+    },
+    {
+      "id": "RF08",
+      "text": "Administrar variantes por talla y color con SKU y código de barras únicos cuando corresponda.",
+      "cases": [
+        "CU04"
+      ]
+    },
+    {
+      "id": "RF09",
+      "text": "Gestionar precios por canal, descuentos con vigencia e imágenes del catálogo.",
+      "cases": [
+        "CU04",
+        "CU05"
+      ]
+    },
+    {
+      "id": "RF10",
+      "text": "Configurar publicación y abastecimiento por canal; consultar prendas mediante búsqueda, categoría, talla, color, precio y ordenamiento.",
+      "cases": [
+        "CU04",
+        "CU13",
+        "CU18"
+      ]
+    },
+    {
+      "id": "RF11",
+      "text": "Administrar almacenes, tiendas y cajas mediante ubicaciones jerárquicas y asignación de responsables.",
+      "cases": [
+        "CU08"
+      ]
+    },
+    {
+      "id": "RF12",
+      "text": "Consultar existencias físicas, reservadas, comprometidas y disponibles por variante y ubicación con actualizaciones por eventos.",
+      "cases": [
+        "CU08",
+        "CU14"
+      ]
+    },
+    {
+      "id": "RF13",
+      "text": "Registrar entradas, salidas, ajustes, conteos y transferencias con motivo, responsable y detalle de cantidades.",
+      "cases": [
+        "CU08"
+      ]
+    },
+    {
+      "id": "RF14",
+      "text": "Evitar sobreventa mediante reservas transaccionales con vencimiento y emitir alertas de stock bajo.",
+      "cases": [
+        "CU08",
+        "CU14",
+        "CU21"
+      ]
+    },
+    {
+      "id": "RF15",
+      "text": "Iniciar el vestidor 3D con un avatar propio revisado y vigente.",
+      "cases": [
+        "CU16",
+        "CU25"
+      ]
+    },
+    {
+      "id": "RF16",
+      "text": "Cargar modelos GLB de avatar y prendas compatibles con el contrato de esqueleto, escala y deformaciones.",
+      "cases": [
+        "CU16",
+        "CU24"
+      ]
+    },
+    {
+      "id": "RF17",
+      "text": "Vestir el avatar con la prenda elegida y permitir rotación de 360 grados, acercamiento y cambio de vista.",
+      "cases": [
+        "CU16"
+      ]
+    },
+    {
+      "id": "RF18",
+      "text": "Cambiar talla, color y variante en el vestidor cuando exista un recurso compatible; informar incompatibilidad.",
+      "cases": [
+        "CU16",
+        "CU24"
+      ]
+    },
+    {
+      "id": "RF19",
+      "text": "Registrar eventos del vestidor y transferir al carrito exactamente la variante seleccionada.",
+      "cases": [
+        "CU12",
+        "CU15",
+        "CU16"
+      ]
+    },
+    {
+      "id": "RF20",
+      "text": "Mantener un carrito persistente por cliente con cantidades, precios vigentes, descuentos y disponibilidad.",
+      "cases": [
+        "CU12"
+      ]
+    },
+    {
+      "id": "RF21",
+      "text": "Crear el pedido desde el carrito con dirección, entrega, desglose de importes y reserva temporal.",
+      "cases": [
+        "CU14"
+      ]
+    },
+    {
+      "id": "RF22",
+      "text": "Procesar pagos mediante un adaptador de pasarela, registrar eventos verificados y evitar cobros o confirmaciones duplicadas.",
+      "cases": [
+        "CU09"
+      ]
+    },
+    {
+      "id": "RF23",
+      "text": "Gestionar el pedido desde pendiente de pago hasta preparación, despacho, entrega y cierre, con historial.",
+      "cases": [
+        "CU14"
+      ]
+    },
+    {
+      "id": "RF24",
+      "text": "Tramitar cancelaciones, devoluciones parciales y reembolsos según estado, plazo, inspección y monto pendiente.",
+      "cases": [
+        "CU11"
+      ]
+    },
+    {
+      "id": "RF25",
+      "text": "Consultar indicadores de ventas, inventario, pedidos, cajas y uso del vestidor con período y filtros explícitos.",
+      "cases": [
+        "CU10",
+        "CU15",
+        "CU22"
+      ]
+    },
+    {
+      "id": "RF26",
+      "text": "Detectar operaciones atípicas de venta, devolución y ajuste, mostrando evidencia para revisión humana.",
+      "cases": [
+        "CU19"
+      ]
+    },
+    {
+      "id": "RF27",
+      "text": "Estimar demanda por variante, ubicación, canal y horizonte, registrando modelo y error de evaluación.",
+      "cases": [
+        "CU20"
+      ]
+    },
+    {
+      "id": "RF28",
+      "text": "Interpretar preguntas comerciales de un conjunto de intenciones soportadas y ejecutar consultas de solo lectura autorizadas.",
+      "cases": [
+        "CU22"
+      ]
+    },
+    {
+      "id": "RF29",
+      "text": "Recomendar reposición y traslado de existencias con cantidades y motivos; la ejecución exige confirmación del encargado.",
+      "cases": [
+        "CU17"
+      ]
+    },
+    {
+      "id": "RF30",
+      "text": "Publicar avisos con audiencia, canal, vigencia y estado.",
+      "cases": [
+        "CU06"
+      ]
+    },
+    {
+      "id": "RF31",
+      "text": "Generar notificaciones de pedidos, inventario, avisos y avatar listo; enviar push a dispositivos registrados.",
+      "cases": [
+        "CU21"
+      ]
+    },
+    {
+      "id": "RF32",
+      "text": "Administrar preferencias, plantillas, intentos de entrega, lectura y revocación de dispositivos.",
+      "cases": [
+        "CU07",
+        "CU21"
+      ]
+    },
+    {
+      "id": "RF33",
+      "text": "Configurar moneda, impuestos, zonas, costo de entrega, plazo de reserva y política de devolución.",
+      "cases": [
+        "CU05"
+      ]
+    },
+    {
+      "id": "RF34",
+      "text": "Configurar referencias de conexión a pagos, almacenamiento, procesamiento 3D e IA sin exponer secretos al cliente.",
+      "cases": [
+        "CU05"
+      ]
+    },
+    {
+      "id": "RF35",
+      "text": "Registrar operaciones críticas con actor, entidad, fecha, motivo y cambios permitidos, omitiendo fotos y credenciales.",
+      "cases": [
+        "CU01",
+        "CU03",
+        "CU05",
+        "CU08",
+        "CU09",
+        "CU11",
+        "CU23",
+        "CU25"
+      ]
+    },
+    {
+      "id": "RF36",
+      "text": "Recabar consentimiento versionado antes de recibir fotografías corporales y explicar finalidad y eliminación.",
+      "cases": [
+        "CU23",
+        "CU25"
+      ]
+    },
+    {
+      "id": "RF37",
+      "text": "Capturar o subir tres fotografías de cuerpo completo vestido, frente, perfil y espalda, con altura en centímetros.",
+      "cases": [
+        "CU23"
+      ]
+    },
+    {
+      "id": "RF38",
+      "text": "Validar formato, tamaño, orientación, persona única, cuerpo visible y consistencia de las fotografías; pedir repetir las rechazadas.",
+      "cases": [
+        "CU23"
+      ]
+    },
+    {
+      "id": "RF39",
+      "text": "Estimar proporciones desde las fotografías y ajustar una malla corporal paramétrica; exportar un avatar GLB con versión del proceso.",
+      "cases": [
+        "CU23"
+      ]
+    },
+    {
+      "id": "RF40",
+      "text": "Consultar el progreso del trabajo de generación y resolver fallos con reintentos limitados sin duplicar avatares activos.",
+      "cases": [
+        "CU23"
+      ]
+    },
+    {
+      "id": "RF41",
+      "text": "Revisar el avatar, corregir medidas con regeneración y aprobar una versión para el vestidor.",
+      "cases": [
+        "CU25"
+      ]
+    },
+    {
+      "id": "RF42",
+      "text": "Retirar el avatar por petición de su propietario y eliminar fotos de origen al concluir el trabajo o antes de 24 horas.",
+      "cases": [
+        "CU23",
+        "CU25"
+      ]
+    },
+    {
+      "id": "RF43",
+      "text": "Preparar y publicar modelos de prenda por variante con escala, esqueleto y deformaciones compatibles, verificando su carga.",
+      "cases": [
+        "CU24"
+      ]
+    },
+    {
+      "id": "RF44",
+      "text": "Buscar prendas similares a una imagen y mostrar coincidencias con puntuación, sin asegurar identificación exacta de talla o SKU.",
+      "cases": [
+        "CU18"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "case": "CU01",
+      "name": "Gestionar usuarios",
+      "requirements": [
+        "RF01",
+        "RF02",
+        "RF35"
+      ],
+      "cycle": 1,
+      "package": "P1",
+      "interface": "Pantalla Usuarios: listado, formulario y confirmación de desactivación.",
+      "tables": [
+        "usuario",
+        "rol",
+        "auditoria"
+      ],
+      "diagrams": [
+        "CU01_uso",
+        "CU01_comunicacion",
+        "CU01_clases",
+        "CU01_secuencia"
+      ],
+      "tests": [
+        "PA-01-1",
+        "PA-01-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU02",
+      "name": "Autenticar y autorizar",
+      "requirements": [
+        "RF02",
+        "RF04",
+        "RF06"
+      ],
+      "cycle": 1,
+      "package": "P1",
+      "interface": "Pantalla Iniciar sesión y avisos de sesión o permiso.",
+      "tables": [
+        "usuario",
+        "sesion",
+        "rol",
+        "permiso"
+      ],
+      "diagrams": [
+        "CU02_uso",
+        "CU02_comunicacion",
+        "CU02_clases",
+        "CU02_secuencia"
+      ],
+      "tests": [
+        "PA-02-1",
+        "PA-02-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU03",
+      "name": "Gestionar roles y permisos",
+      "requirements": [
+        "RF05",
+        "RF06",
+        "RF35"
+      ],
+      "cycle": 1,
+      "package": "P1",
+      "interface": "Pantalla Roles y permisos: matriz de operaciones e impacto.",
+      "tables": [
+        "rol",
+        "permiso",
+        "usuario",
+        "auditoria"
+      ],
+      "diagrams": [
+        "CU03_uso",
+        "CU03_comunicacion",
+        "CU03_clases",
+        "CU03_secuencia"
+      ],
+      "tests": [
+        "PA-03-1",
+        "PA-03-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU04",
+      "name": "Gestionar y consultar catálogo",
+      "requirements": [
+        "RF07",
+        "RF08",
+        "RF09",
+        "RF10"
+      ],
+      "cycle": 1,
+      "package": "P2",
+      "interface": "Pantallas Editor de catálogo, catálogo y ficha de prenda.",
+      "tables": [
+        "producto",
+        "variante",
+        "categoria",
+        "modelo_prenda"
+      ],
+      "diagrams": [
+        "CU04_uso",
+        "CU04_comunicacion",
+        "CU04_clases",
+        "CU04_secuencia"
+      ],
+      "tests": [
+        "PA-04-1",
+        "PA-04-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU05",
+      "name": "Configurar reglas comerciales",
+      "requirements": [
+        "RF09",
+        "RF33",
+        "RF34",
+        "RF35"
+      ],
+      "cycle": 1,
+      "package": "P8",
+      "interface": "Pantalla Reglas comerciales con editor, vigencia y simulador.",
+      "tables": [
+        "configuracion",
+        "precio_canal",
+        "auditoria"
+      ],
+      "diagrams": [
+        "CU05_uso",
+        "CU05_comunicacion",
+        "CU05_clases",
+        "CU05_secuencia"
+      ],
+      "tests": [
+        "PA-05-1",
+        "PA-05-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU06",
+      "name": "Publicar avisos",
+      "requirements": [
+        "RF30"
+      ],
+      "cycle": 2,
+      "package": "P7",
+      "interface": "Pantalla Avisos: editor, vista previa y calendario de vigencia.",
+      "tables": [
+        "aviso",
+        "usuario",
+        "auditoria"
+      ],
+      "diagrams": [
+        "CU06_uso",
+        "CU06_comunicacion",
+        "CU06_clases",
+        "CU06_secuencia"
+      ],
+      "tests": [
+        "PA-06-1",
+        "PA-06-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU07",
+      "name": "Gestionar perfil y direcciones",
+      "requirements": [
+        "RF03",
+        "RF32"
+      ],
+      "cycle": 1,
+      "package": "P1",
+      "interface": "Pantalla Mi perfil y formulario de direcciones.",
+      "tables": [
+        "usuario",
+        "direccion"
+      ],
+      "diagrams": [
+        "CU07_uso",
+        "CU07_comunicacion",
+        "CU07_clases",
+        "CU07_secuencia"
+      ],
+      "tests": [
+        "PA-07-1",
+        "PA-07-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU08",
+      "name": "Gestionar inventario y ubicaciones",
+      "requirements": [
+        "RF06",
+        "RF11",
+        "RF12",
+        "RF13",
+        "RF14",
+        "RF35"
+      ],
+      "cycle": 1,
+      "package": "P3",
+      "interface": "Pantalla Inventario por ubicación y registro de movimientos.",
+      "tables": [
+        "inventario",
+        "ubicacion",
+        "movimiento_stock",
+        "variante"
+      ],
+      "diagrams": [
+        "CU08_uso",
+        "CU08_comunicacion",
+        "CU08_clases",
+        "CU08_secuencia"
+      ],
+      "tests": [
+        "PA-08-1",
+        "PA-08-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU09",
+      "name": "Procesar pagos",
+      "requirements": [
+        "RF22",
+        "RF35"
+      ],
+      "cycle": 2,
+      "package": "P5",
+      "interface": "Pantalla Resumen de pago, pasarela externa y estado del pago.",
+      "tables": [
+        "pago",
+        "evento_pago",
+        "pedido"
+      ],
+      "diagrams": [
+        "CU09_uso",
+        "CU09_comunicacion",
+        "CU09_clases",
+        "CU09_secuencia"
+      ],
+      "tests": [
+        "PA-09-1",
+        "PA-09-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU10",
+      "name": "Consultar reportes de ventas",
+      "requirements": [
+        "RF25"
+      ],
+      "cycle": 2,
+      "package": "P6",
+      "interface": "Pantalla Reportes de ventas: filtros, indicadores, detalle y exportación.",
+      "tables": [
+        "pedido",
+        "pago",
+        "devolucion"
+      ],
+      "diagrams": [
+        "CU10_uso",
+        "CU10_comunicacion",
+        "CU10_clases",
+        "CU10_secuencia"
+      ],
+      "tests": [
+        "PA-10-1",
+        "PA-10-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU11",
+      "name": "Gestionar devoluciones y cancelaciones",
+      "requirements": [
+        "RF24",
+        "RF35"
+      ],
+      "cycle": 2,
+      "package": "P5",
+      "interface": "Pantallas Solicitar devolución y resolver solicitudes.",
+      "tables": [
+        "devolucion",
+        "pedido",
+        "reembolso",
+        "movimiento_stock"
+      ],
+      "diagrams": [
+        "CU11_uso",
+        "CU11_comunicacion",
+        "CU11_clases",
+        "CU11_secuencia"
+      ],
+      "tests": [
+        "PA-11-1",
+        "PA-11-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU12",
+      "name": "Gestionar carrito",
+      "requirements": [
+        "RF19",
+        "RF20"
+      ],
+      "cycle": 2,
+      "package": "P5",
+      "interface": "Pantalla Carrito con variantes, cantidades, descuentos y total.",
+      "tables": [
+        "carrito",
+        "item_carrito",
+        "variante"
+      ],
+      "diagrams": [
+        "CU12_uso",
+        "CU12_comunicacion",
+        "CU12_clases",
+        "CU12_secuencia"
+      ],
+      "tests": [
+        "PA-12-1",
+        "PA-12-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU13",
+      "name": "Configurar disponibilidad por canal",
+      "requirements": [
+        "RF10"
+      ],
+      "cycle": 2,
+      "package": "P3",
+      "interface": "Pantalla Disponibilidad por canal y ubicación de abastecimiento.",
+      "tables": [
+        "disponibilidad_canal",
+        "inventario",
+        "variante",
+        "ubicacion"
+      ],
+      "diagrams": [
+        "CU13_uso",
+        "CU13_comunicacion",
+        "CU13_clases",
+        "CU13_secuencia"
+      ],
+      "tests": [
+        "PA-13-1",
+        "PA-13-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU14",
+      "name": "Gestionar pedidos",
+      "requirements": [
+        "RF12",
+        "RF14",
+        "RF21",
+        "RF23"
+      ],
+      "cycle": 2,
+      "package": "P5",
+      "interface": "Pantallas Confirmar pedido, Mis pedidos y gestión de pedidos.",
+      "tables": [
+        "pedido",
+        "detalle_pedido",
+        "reserva_stock",
+        "direccion"
+      ],
+      "diagrams": [
+        "CU14_uso",
+        "CU14_comunicacion",
+        "CU14_clases",
+        "CU14_secuencia"
+      ],
+      "tests": [
+        "PA-14-1",
+        "PA-14-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU15",
+      "name": "Analizar uso del vestidor",
+      "requirements": [
+        "RF19",
+        "RF25"
+      ],
+      "cycle": 3,
+      "package": "P6",
+      "interface": "Pantalla Analítica del vestidor: embudo, fallos y filtros.",
+      "tables": [
+        "evento_vestidor",
+        "sesion_vestidor",
+        "producto"
+      ],
+      "diagrams": [
+        "CU15_uso",
+        "CU15_comunicacion",
+        "CU15_clases",
+        "CU15_secuencia"
+      ],
+      "tests": [
+        "PA-15-1",
+        "PA-15-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU16",
+      "name": "Probar prendas sobre avatar 3D",
+      "requirements": [
+        "RF15",
+        "RF16",
+        "RF17",
+        "RF18",
+        "RF19"
+      ],
+      "cycle": 1,
+      "package": "P4",
+      "interface": "Pantalla Vestidor 3D: visor, selector de variantes y acceso al carrito.",
+      "tables": [
+        "avatar",
+        "modelo_prenda",
+        "variante",
+        "sesion_vestidor"
+      ],
+      "diagrams": [
+        "CU16_uso",
+        "CU16_comunicacion",
+        "CU16_clases",
+        "CU16_secuencia"
+      ],
+      "tests": [
+        "PA-16-1",
+        "PA-16-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU17",
+      "name": "Recomendar reposición",
+      "requirements": [
+        "RF29"
+      ],
+      "cycle": 3,
+      "package": "P6",
+      "interface": "Pantalla Reposición: cobertura, sugerencias y revisión.",
+      "tables": [
+        "recomendacion",
+        "inventario",
+        "prediccion",
+        "variante"
+      ],
+      "diagrams": [
+        "CU17_uso",
+        "CU17_comunicacion",
+        "CU17_clases",
+        "CU17_secuencia"
+      ],
+      "tests": [
+        "PA-17-1",
+        "PA-17-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU18",
+      "name": "Buscar prendas por imagen",
+      "requirements": [
+        "RF10",
+        "RF44"
+      ],
+      "cycle": 3,
+      "package": "P6",
+      "interface": "Pantalla Búsqueda por imagen: carga, recorte y resultados.",
+      "tables": [
+        "recurso_catalogo",
+        "producto",
+        "consulta_analitica"
+      ],
+      "diagrams": [
+        "CU18_uso",
+        "CU18_comunicacion",
+        "CU18_clases",
+        "CU18_secuencia"
+      ],
+      "tests": [
+        "PA-18-1",
+        "PA-18-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU19",
+      "name": "Detectar anomalías",
+      "requirements": [
+        "RF26"
+      ],
+      "cycle": 3,
+      "package": "P6",
+      "interface": "Pantalla Alertas de anomalías y detalle de evidencias.",
+      "tables": [
+        "anomalia",
+        "ejecucion_analitica",
+        "movimiento_stock"
+      ],
+      "diagrams": [
+        "CU19_uso",
+        "CU19_comunicacion",
+        "CU19_clases",
+        "CU19_secuencia"
+      ],
+      "tests": [
+        "PA-19-1",
+        "PA-19-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU20",
+      "name": "Predecir demanda",
+      "requirements": [
+        "RF27"
+      ],
+      "cycle": 3,
+      "package": "P6",
+      "interface": "Pantalla Demanda: horizonte, gráfico, incertidumbre y versión.",
+      "tables": [
+        "prediccion",
+        "ejecucion_analitica",
+        "variante"
+      ],
+      "diagrams": [
+        "CU20_uso",
+        "CU20_comunicacion",
+        "CU20_clases",
+        "CU20_secuencia"
+      ],
+      "tests": [
+        "PA-20-1",
+        "PA-20-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU21",
+      "name": "Gestionar notificaciones",
+      "requirements": [
+        "RF14",
+        "RF31",
+        "RF32"
+      ],
+      "cycle": 2,
+      "package": "P7",
+      "interface": "Pantallas Notificaciones y Preferencias de comunicación.",
+      "tables": [
+        "notificacion",
+        "outbox_evento",
+        "dispositivo",
+        "usuario"
+      ],
+      "diagrams": [
+        "CU21_uso",
+        "CU21_comunicacion",
+        "CU21_clases",
+        "CU21_secuencia"
+      ],
+      "tests": [
+        "PA-21-1",
+        "PA-21-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU22",
+      "name": "Consultar analítica en lenguaje natural",
+      "requirements": [
+        "RF25",
+        "RF28"
+      ],
+      "cycle": 3,
+      "package": "P6",
+      "interface": "Pantalla Asistente analítico con pregunta, interpretación y resultados.",
+      "tables": [
+        "consulta_analitica",
+        "modelo_analitico",
+        "rol"
+      ],
+      "diagrams": [
+        "CU22_uso",
+        "CU22_comunicacion",
+        "CU22_clases",
+        "CU22_secuencia"
+      ],
+      "tests": [
+        "PA-22-1",
+        "PA-22-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU23",
+      "name": "Generar avatar desde fotografías",
+      "requirements": [
+        "RF35",
+        "RF36",
+        "RF37",
+        "RF38",
+        "RF39",
+        "RF40",
+        "RF42"
+      ],
+      "cycle": 1,
+      "package": "P4",
+      "interface": "Pantallas Crear avatar: guía, carga privada, altura y progreso.",
+      "tables": [
+        "trabajo_avatar",
+        "avatar",
+        "foto_temporal",
+        "consentimiento"
+      ],
+      "diagrams": [
+        "CU23_uso",
+        "CU23_comunicacion",
+        "CU23_clases",
+        "CU23_secuencia"
+      ],
+      "tests": [
+        "PA-23-1",
+        "PA-23-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU24",
+      "name": "Gestionar modelos 3D de prendas",
+      "requirements": [
+        "RF16",
+        "RF18",
+        "RF43"
+      ],
+      "cycle": 1,
+      "package": "P4",
+      "interface": "Pantalla Modelos 3D de prendas: carga, correspondencias y previsualización.",
+      "tables": [
+        "modelo_prenda",
+        "variante",
+        "plantilla_corporal"
+      ],
+      "diagrams": [
+        "CU24_uso",
+        "CU24_comunicacion",
+        "CU24_clases",
+        "CU24_secuencia"
+      ],
+      "tests": [
+        "PA-24-1",
+        "PA-24-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    },
+    {
+      "case": "CU25",
+      "name": "Revisar y eliminar avatar",
+      "requirements": [
+        "RF03",
+        "RF15",
+        "RF35",
+        "RF36",
+        "RF41",
+        "RF42"
+      ],
+      "cycle": 1,
+      "package": "P4",
+      "interface": "Pantalla Mi avatar: revisión 3D, correcciones, aprobación y eliminación.",
+      "tables": [
+        "avatar",
+        "trabajo_avatar",
+        "foto_temporal"
+      ],
+      "diagrams": [
+        "CU25_uso",
+        "CU25_comunicacion",
+        "CU25_clases",
+        "CU25_secuencia"
+      ],
+      "tests": [
+        "PA-25-1",
+        "PA-25-2"
+      ],
+      "implementation": "PENDIENTE",
+      "evidence": "SIN EJECUTAR"
+    }
+  ],
+  "tests": [
+    {
+      "id": "PA-01-1",
+      "case": "CU01",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Correo de personal nuevo y rol V.",
+      "action": "Crear la cuenta y confirmar.",
+      "expected": "Cuenta activa con rol V y evento de auditoría."
+    },
+    {
+      "id": "PA-01-2",
+      "case": "CU01",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Correo que ya pertenece a otra cuenta.",
+      "action": "Intentar crear una cuenta.",
+      "expected": "Mensaje de duplicidad y ninguna cuenta adicional."
+    },
+    {
+      "id": "PA-02-1",
+      "case": "CU02",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Cliente activo con contraseña correcta.",
+      "action": "Iniciar sesión y abrir sus pedidos.",
+      "expected": "Acceso a sus propios pedidos."
+    },
+    {
+      "id": "PA-02-2",
+      "case": "CU02",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Cliente autenticado intenta administrar roles.",
+      "action": "Solicitar la operación protegida.",
+      "expected": "Acceso denegado y roles sin cambios."
+    },
+    {
+      "id": "PA-03-1",
+      "case": "CU03",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Rol A sin permiso de reportes.",
+      "action": "Asignar consultarReportes y confirmar.",
+      "expected": "El rol accede a reportes en la siguiente solicitud autorizada."
+    },
+    {
+      "id": "PA-03-2",
+      "case": "CU03",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Rol todavía asignado a un vendedor.",
+      "action": "Solicitar su eliminación.",
+      "expected": "Eliminación bloqueada hasta reasignar el usuario."
+    },
+    {
+      "id": "PA-04-1",
+      "case": "CU04",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Prenda con dos tallas, precio válido y sin modelo 3D.",
+      "action": "Publicar y consultar su ficha.",
+      "expected": "Compra disponible según stock y prueba virtual indicada como no disponible."
+    },
+    {
+      "id": "PA-04-2",
+      "case": "CU04",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Precio negativo.",
+      "action": "Confirmar la publicación.",
+      "expected": "Validación rechaza el precio y no publica cambios."
+    },
+    {
+      "id": "PA-05-1",
+      "case": "CU05",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Descuento de 10 % para una categoría durante fechas válidas.",
+      "action": "Simular y activar la regla.",
+      "expected": "La simulación reduce un subtotal elegible de 100 a 90."
+    },
+    {
+      "id": "PA-05-2",
+      "case": "CU05",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Descuento de 110 %.",
+      "action": "Guardar la regla.",
+      "expected": "Rechazo por rango inválido."
+    },
+    {
+      "id": "PA-07-1",
+      "case": "CU07",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Nueva dirección completa del cliente.",
+      "action": "Guardar como predeterminada.",
+      "expected": "Dirección disponible en compra y única predeterminada."
+    },
+    {
+      "id": "PA-07-2",
+      "case": "CU07",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Identificador de dirección de otro cliente.",
+      "action": "Solicitar su edición.",
+      "expected": "Acceso denegado y dirección intacta."
+    },
+    {
+      "id": "PA-08-1",
+      "case": "CU08",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Diez unidades disponibles y traslado de tres.",
+      "action": "Confirmar traslado entre ubicaciones.",
+      "expected": "Origen disminuye tres y destino aumenta tres con un movimiento trazable."
+    },
+    {
+      "id": "PA-08-2",
+      "case": "CU08",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Dos unidades disponibles y salida de cinco.",
+      "action": "Confirmar salida.",
+      "expected": "Rechazo sin modificar saldos."
+    },
+    {
+      "id": "PA-16-1",
+      "case": "CU16",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Avatar aprobado y prenda con esqueleto y versión compatibles.",
+      "action": "Abrir el vestidor y rotar la vista.",
+      "expected": "Combinación cargada y manipulable con aviso de aproximación."
+    },
+    {
+      "id": "PA-16-2",
+      "case": "CU16",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Prenda incompatible con la versión del avatar.",
+      "action": "Solicitar prueba.",
+      "expected": "Prueba bloqueada con explicación; no se muestra una adaptación falsa."
+    },
+    {
+      "id": "PA-23-1",
+      "case": "CU23",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Tres vistas válidas y altura de 170 cm.",
+      "action": "Enviar generación y completar el trabajo.",
+      "expected": "GLB revisable derivado de proporciones estimadas y fotos eliminadas."
+    },
+    {
+      "id": "PA-23-2",
+      "case": "CU23",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Vista frontal con piernas fuera del encuadre.",
+      "action": "Validar fotografías.",
+      "expected": "Se solicita repetir esa vista sin generar un avatar ficticio."
+    },
+    {
+      "id": "PA-24-1",
+      "case": "CU24",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "GLB válido con esqueleto, morphs y variantes compatibles.",
+      "action": "Validar, previsualizar y aprobar.",
+      "expected": "Versión publicada y ofrecida al avatar compatible."
+    },
+    {
+      "id": "PA-24-2",
+      "case": "CU24",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "GLB con esqueleto ajeno al contrato del vestidor.",
+      "action": "Intentar aprobar.",
+      "expected": "Publicación bloqueada y causa de incompatibilidad."
+    },
+    {
+      "id": "PA-25-1",
+      "case": "CU25",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Avatar pendiente con proporciones revisadas.",
+      "action": "Aprobar la versión.",
+      "expected": "Estado aprobado y acceso a pruebas compatibles."
+    },
+    {
+      "id": "PA-25-2",
+      "case": "CU25",
+      "cycle": 1,
+      "status": "PENDIENTE",
+      "input": "Avatar propio con GLB y medidas almacenadas.",
+      "action": "Confirmar eliminación.",
+      "expected": "Accesos revocados y eliminación verificada de recursos activos."
+    },
+    {
+      "id": "PA-06-1",
+      "case": "CU06",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Aviso válido para el canal web con vigencia actual.",
+      "action": "Confirmar publicación.",
+      "expected": "Aviso visible en web para la audiencia elegida."
+    },
+    {
+      "id": "PA-06-2",
+      "case": "CU06",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Fecha final anterior a la inicial.",
+      "action": "Publicar.",
+      "expected": "Validación de fechas y aviso sin publicar."
+    },
+    {
+      "id": "PA-09-1",
+      "case": "CU09",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Pedido de 150 y confirmación firmada por 150.",
+      "action": "Recibir la notificación de la pasarela.",
+      "expected": "Un pago confirmado y pedido pagado."
+    },
+    {
+      "id": "PA-09-2",
+      "case": "CU09",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "La misma confirmación recibida dos veces.",
+      "action": "Procesar ambos eventos.",
+      "expected": "Un solo registro efectivo y una sola transición."
+    },
+    {
+      "id": "PA-10-1",
+      "case": "CU10",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Pagos confirmados por 500 y devoluciones por 50 bajo el mismo criterio temporal.",
+      "action": "Consultar ventas netas.",
+      "expected": "Reporte de 450 con filtros y corte visibles."
+    },
+    {
+      "id": "PA-10-2",
+      "case": "CU10",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Periodo sin operaciones.",
+      "action": "Generar reporte.",
+      "expected": "Totales cero y mensaje sin movimientos."
+    },
+    {
+      "id": "PA-11-1",
+      "case": "CU11",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Pedido pendiente sin pago ni envío.",
+      "action": "Cancelar dentro de las condiciones.",
+      "expected": "Pedido cancelado y reserva liberada."
+    },
+    {
+      "id": "PA-11-2",
+      "case": "CU11",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Devolución aprobada y pasarela sin respuesta.",
+      "action": "Solicitar reembolso.",
+      "expected": "Reembolso pendiente, sin marcarlo completado."
+    },
+    {
+      "id": "PA-12-1",
+      "case": "CU12",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Variante con cinco unidades y cantidad solicitada dos.",
+      "action": "Añadir al carrito.",
+      "expected": "Línea de dos unidades y total recalculado."
+    },
+    {
+      "id": "PA-12-2",
+      "case": "CU12",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Variante con una unidad y solicitud de tres.",
+      "action": "Actualizar cantidad.",
+      "expected": "Aviso de disponibilidad y cantidad no confirmada."
+    },
+    {
+      "id": "PA-13-1",
+      "case": "CU13",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Variante habilitada solo en web.",
+      "action": "Consultar disponibilidad desde móvil.",
+      "expected": "Variante no ofrecida para comprar en móvil."
+    },
+    {
+      "id": "PA-13-2",
+      "case": "CU13",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Diez unidades compartidas y reserva global de tres.",
+      "action": "Consultar ambos canales.",
+      "expected": "Cada canal consulta siete disponibles sin duplicar existencias."
+    },
+    {
+      "id": "PA-14-1",
+      "case": "CU14",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Carrito válido, dirección completa y stock suficiente.",
+      "action": "Confirmar compra.",
+      "expected": "Un pedido pendiente de pago y reserva de sus unidades."
+    },
+    {
+      "id": "PA-14-2",
+      "case": "CU14",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Pedido pendiente de pago.",
+      "action": "Intentar marcarlo entregado.",
+      "expected": "Transición rechazada."
+    },
+    {
+      "id": "PA-21-1",
+      "case": "CU21",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Evento avatar listo para revisar.",
+      "action": "Generar y abrir la notificación.",
+      "expected": "Aviso interno con acceso autenticado a revisión."
+    },
+    {
+      "id": "PA-21-2",
+      "case": "CU21",
+      "cycle": 2,
+      "status": "PENDIENTE",
+      "input": "Promociones desactivadas en preferencias.",
+      "action": "Generar una comunicación promocional opcional.",
+      "expected": "No se envía por el canal desactivado."
+    },
+    {
+      "id": "PA-15-1",
+      "case": "CU15",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Diez sesiones válidas y cuatro con adición atribuible.",
+      "action": "Calcular conversión a carrito.",
+      "expected": "40 % con denominador, ventana y cobertura visibles."
+    },
+    {
+      "id": "PA-15-2",
+      "case": "CU15",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Un mismo evento enviado dos veces.",
+      "action": "Generar reporte.",
+      "expected": "El evento cuenta una sola vez."
+    },
+    {
+      "id": "PA-17-1",
+      "case": "CU17",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Necesidad de cobertura 20, seguridad 5 y disponible 8 sin entradas.",
+      "action": "Calcular reposición.",
+      "expected": "Sugerencia de 17 unidades con explicación."
+    },
+    {
+      "id": "PA-17-2",
+      "case": "CU17",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Variante sin plazo de abastecimiento.",
+      "action": "Solicitar propuesta.",
+      "expected": "Variante señalada como incompleta, sin cantidad inventada."
+    },
+    {
+      "id": "PA-18-1",
+      "case": "CU18",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Imagen válida de una camisa y catálogo con camisas similares.",
+      "action": "Buscar por imagen.",
+      "expected": "Lista ordenada de candidatos con acceso a sus fichas."
+    },
+    {
+      "id": "PA-18-2",
+      "case": "CU18",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Archivo corrupto.",
+      "action": "Cargar la referencia.",
+      "expected": "Error de validación sin iniciar comparación."
+    },
+    {
+      "id": "PA-19-1",
+      "case": "CU19",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Salida de inventario que supera el umbral configurado.",
+      "action": "Ejecutar evaluación.",
+      "expected": "Alerta con magnitud, referencia y movimiento consultable."
+    },
+    {
+      "id": "PA-19-2",
+      "case": "CU19",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Serie sin historial mínimo.",
+      "action": "Evaluar anomalías.",
+      "expected": "Aviso de datos insuficientes, sin falsa certeza."
+    },
+    {
+      "id": "PA-20-1",
+      "case": "CU20",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Serie suficiente y horizonte de cuatro semanas.",
+      "action": "Ejecutar pronóstico.",
+      "expected": "Cuatro periodos estimados, intervalo y fecha de corte."
+    },
+    {
+      "id": "PA-20-2",
+      "case": "CU20",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "Variante nueva sin historial.",
+      "action": "Predecir demanda.",
+      "expected": "Base explícita o estado sin pronóstico, sin precisión inventada."
+    },
+    {
+      "id": "PA-22-1",
+      "case": "CU22",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "«Ventas netas por categoría del mes anterior».",
+      "action": "Enviar pregunta.",
+      "expected": "Tabla calculada con periodo interpretado, definición y corte."
+    },
+    {
+      "id": "PA-22-2",
+      "case": "CU22",
+      "cycle": 3,
+      "status": "PENDIENTE",
+      "input": "«Elimina los pedidos antiguos».",
+      "action": "Enviar pregunta.",
+      "expected": "Solicitud rechazada sin ejecutar escritura."
+    }
+  ]
+}
