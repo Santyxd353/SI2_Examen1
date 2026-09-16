@@ -1,0 +1,920 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model anomalia {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ejecucion_id        String              @db.Uuid
+  indicador           String              @db.VarChar(80)
+  entidad_tipo        String              @db.VarChar(50)
+  entidad_id          String?             @db.Uuid
+  puntaje             Decimal             @db.Decimal(12, 4)
+  evidencia           Json
+  estado              String              @db.VarChar(20)
+  revisado_por        String?             @db.Uuid
+  observacion         String?             @db.VarChar(500)
+  ejecucion_analitica ejecucion_analitica @relation(fields: [ejecucion_id], references: [id], onUpdate: NoAction, map: "fk_anomalia_ejecucion_id")
+  usuario             usuario?            @relation(fields: [revisado_por], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_anomalia_revisado_por")
+
+  @@index([ejecucion_id], map: "ix_anomalia_ejecucion_id")
+  @@index([revisado_por], map: "ix_anomalia_revisado_por")
+}
+
+model auditoria {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id    String?  @db.Uuid
+  accion      String   @db.VarChar(100)
+  entidad     String   @db.VarChar(60)
+  entidad_id  String?  @db.Uuid
+  cambios     Json
+  motivo      String?  @db.VarChar(400)
+  correlacion String   @db.Uuid
+  creado_en   DateTime @db.Timestamptz(6)
+  usuario     usuario? @relation(fields: [actor_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_auditoria_actor_id")
+
+  @@index([actor_id], map: "ix_auditoria_actor_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model avatar {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id         String             @db.Uuid
+  plantilla_id       String             @db.Uuid
+  version            Int
+  clave_glb          String?            @db.VarChar(500)
+  medidas            Json?
+  parametros_malla   Json?
+  estado             String             @db.VarChar(20)
+  creado_en          DateTime           @db.Timestamptz(6)
+  aprobado_en        DateTime?          @db.Timestamptz(6)
+  eliminado_en       DateTime?          @db.Timestamptz(6)
+  plantilla_corporal plantilla_corporal @relation(fields: [plantilla_id], references: [id], onUpdate: NoAction, map: "fk_avatar_plantilla_id")
+  usuario            usuario            @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_avatar_usuario_id")
+  sesion_vestidor    sesion_vestidor[]
+  trabajo_avatar     trabajo_avatar[]
+
+  @@unique([usuario_id, version])
+  @@index([plantilla_id], map: "ix_avatar_plantilla_id")
+  @@index([usuario_id], map: "ix_avatar_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model aviso {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  autor_id  String   @db.Uuid
+  titulo    String   @db.VarChar(160)
+  contenido String
+  enlace    String?  @db.VarChar(500)
+  audiencia Json
+  canales   Json
+  desde     DateTime @db.Timestamptz(6)
+  hasta     DateTime @db.Timestamptz(6)
+  estado    String   @db.VarChar(15)
+  usuario   usuario  @relation(fields: [autor_id], references: [id], onUpdate: NoAction, map: "fk_aviso_autor_id")
+
+  @@index([autor_id], map: "ix_aviso_autor_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model captura_corporal {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id        String           @db.Uuid
+  consentimiento_id String           @db.Uuid
+  altura_cm         Decimal?         @db.Decimal(5, 2)
+  estado            String           @db.VarChar(20)
+  creada_en         DateTime         @db.Timestamptz(6)
+  purgar_antes_de   DateTime         @db.Timestamptz(6)
+  purgada_en        DateTime?        @db.Timestamptz(6)
+  consentimiento    consentimiento   @relation(fields: [consentimiento_id], references: [id], onUpdate: NoAction, map: "fk_captura_corporal_consentimiento_id")
+  usuario           usuario          @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_captura_corporal_usuario_id")
+  foto_temporal     foto_temporal[]
+  trabajo_avatar    trabajo_avatar[]
+
+  @@index([consentimiento_id], map: "ix_captura_corporal_consentimiento_id")
+  @@index([usuario_id], map: "ix_captura_corporal_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model carrito {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id     String         @db.Uuid
+  canal          String         @db.VarChar(10)
+  estado         String         @db.VarChar(15)
+  actualizado_en DateTime       @db.Timestamptz(6)
+  usuario        usuario        @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_carrito_usuario_id")
+  item_carrito   item_carrito[]
+  pedido         pedido?
+
+  @@index([usuario_id], map: "ix_carrito_usuario_id")
+}
+
+model categoria {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre      String     @unique @db.VarChar(80)
+  descripcion String?    @db.VarChar(255)
+  activa      Boolean
+  producto    producto[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model configuracion {
+  id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clave    String    @db.VarChar(100)
+  version  Int
+  valor    Json
+  desde    DateTime  @db.Timestamptz(6)
+  hasta    DateTime? @db.Timestamptz(6)
+  autor_id String    @db.Uuid
+  usuario  usuario   @relation(fields: [autor_id], references: [id], onUpdate: NoAction, map: "fk_configuracion_autor_id")
+
+  @@unique([clave, version])
+  @@index([autor_id], map: "ix_configuracion_autor_id")
+}
+
+model consentimiento {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id         String             @db.Uuid
+  version_texto      String             @db.VarChar(30)
+  finalidad          String             @db.VarChar(100)
+  declaracion_adulto Boolean
+  aceptado_en        DateTime           @db.Timestamptz(6)
+  revocado_en        DateTime?          @db.Timestamptz(6)
+  captura_corporal   captura_corporal[]
+  usuario            usuario            @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_consentimiento_usuario_id")
+
+  @@index([usuario_id], map: "ix_consentimiento_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model consulta_analitica {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id        String            @db.Uuid
+  modelo_id         String?           @db.Uuid
+  tipo              String            @db.VarChar(15)
+  pregunta          String?
+  interpretacion    Json
+  filtros           Json
+  resultado_resumen Json?
+  estado            String            @db.VarChar(20)
+  creada_en         DateTime          @db.Timestamptz(6)
+  modelo_analitico  modelo_analitico? @relation(fields: [modelo_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_consulta_analitica_modelo_id")
+  usuario           usuario           @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_consulta_analitica_usuario_id")
+
+  @@index([modelo_id], map: "ix_consulta_analitica_modelo_id")
+  @@index([usuario_id], map: "ix_consulta_analitica_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model detalle_devolucion {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  devolucion_id     String         @db.Uuid
+  detalle_pedido_id String         @db.Uuid
+  cantidad          Int
+  cantidad_apta     Int
+  ubicacion_id      String?        @db.Uuid
+  observacion       String?        @db.VarChar(400)
+  reintegrada_en    DateTime?      @db.Timestamptz(6)
+  detalle_pedido    detalle_pedido @relation(fields: [detalle_pedido_id], references: [id], onUpdate: NoAction, map: "fk_detalle_devolucion_detalle_pedido_id")
+  devolucion        devolucion     @relation(fields: [devolucion_id], references: [id], onUpdate: NoAction, map: "fk_detalle_devolucion_devolucion_id")
+  ubicacion         ubicacion?     @relation(fields: [ubicacion_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_detalle_devolucion_ubicacion_id")
+
+  @@unique([devolucion_id, detalle_pedido_id])
+  @@index([detalle_pedido_id], map: "ix_detalle_devolucion_detalle_pedido_id")
+  @@index([devolucion_id], map: "ix_detalle_devolucion_devolucion_id")
+  @@index([ubicacion_id], map: "ix_detalle_devolucion_ubicacion_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model detalle_pedido {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedido_id            String               @db.Uuid
+  variante_id          String               @db.Uuid
+  sku_snapshot         String               @db.VarChar(60)
+  descripcion_snapshot String               @db.VarChar(255)
+  talla_snapshot       String               @db.VarChar(20)
+  color_snapshot       String               @db.VarChar(50)
+  cantidad             Int
+  precio_unitario      Decimal              @db.Decimal(12, 2)
+  descuento            Decimal              @db.Decimal(12, 2)
+  total_linea          Decimal              @db.Decimal(12, 2)
+  detalle_devolucion   detalle_devolucion[]
+  pedido               pedido               @relation(fields: [pedido_id], references: [id], onUpdate: NoAction, map: "fk_detalle_pedido_pedido_id")
+  variante             variante             @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_detalle_pedido_variante_id")
+  reserva_stock        reserva_stock[]
+
+  @@index([pedido_id], map: "ix_detalle_pedido_pedido_id")
+  @@index([variante_id], map: "ix_detalle_pedido_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model devolucion {
+  id                                       String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedido_id                                String               @db.Uuid
+  usuario_id                               String               @db.Uuid
+  tipo                                     String               @db.VarChar(15)
+  estado                                   String               @db.VarChar(25)
+  motivo                                   String               @db.VarChar(500)
+  resolucion                               String?              @db.VarChar(500)
+  revisado_por                             String?              @db.Uuid
+  solicitada_en                            DateTime             @db.Timestamptz(6)
+  resuelta_en                              DateTime?            @db.Timestamptz(6)
+  detalle_devolucion                       detalle_devolucion[]
+  pedido                                   pedido               @relation(fields: [pedido_id], references: [id], onUpdate: NoAction, map: "fk_devolucion_pedido_id")
+  usuario_devolucion_revisado_porTousuario usuario?             @relation("devolucion_revisado_porTousuario", fields: [revisado_por], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_devolucion_revisado_por")
+  usuario_devolucion_usuario_idTousuario   usuario              @relation("devolucion_usuario_idTousuario", fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_devolucion_usuario_id")
+  reembolso                                reembolso[]
+
+  @@index([pedido_id], map: "ix_devolucion_pedido_id")
+  @@index([revisado_por], map: "ix_devolucion_revisado_por")
+  @@index([usuario_id], map: "ix_devolucion_usuario_id")
+}
+
+model direccion {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id     String  @db.Uuid
+  alias          String  @db.VarChar(50)
+  destinatario   String  @db.VarChar(160)
+  telefono       String  @db.VarChar(30)
+  ciudad         String  @db.VarChar(100)
+  zona           String  @db.VarChar(100)
+  detalle        String  @db.VarChar(400)
+  predeterminada Boolean
+  activa         Boolean
+  usuario        usuario @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_direccion_usuario_id")
+
+  @@index([usuario_id], map: "ix_direccion_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model disponibilidad_canal {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variante_id           String    @db.Uuid
+  ubicacion_id          String    @db.Uuid
+  canal                 String    @db.VarChar(10)
+  habilitada            Boolean
+  stock_seguridad       Int
+  plazo_reposicion_dias Int
+  ubicacion             ubicacion @relation(fields: [ubicacion_id], references: [id], onUpdate: NoAction, map: "fk_disponibilidad_canal_ubicacion_id")
+  variante              variante  @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_disponibilidad_canal_variante_id")
+
+  @@unique([variante_id, ubicacion_id, canal])
+  @@index([ubicacion_id], map: "ix_disponibilidad_canal_ubicacion_id")
+  @@index([variante_id], map: "ix_disponibilidad_canal_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model dispositivo {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id     String         @db.Uuid
+  token_push     String         @unique @db.VarChar(500)
+  plataforma     String         @db.VarChar(15)
+  activo         Boolean
+  actualizado_en DateTime       @db.Timestamptz(6)
+  usuario        usuario        @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_dispositivo_usuario_id")
+  notificacion   notificacion[]
+
+  @@index([usuario_id], map: "ix_dispositivo_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ejecucion_analitica {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelo_id        String           @db.Uuid
+  solicitante_id   String           @db.Uuid
+  desde            DateTime         @db.Date
+  hasta            DateTime         @db.Date
+  filtros          Json
+  metricas         Json?
+  estado           String           @db.VarChar(20)
+  creada_en        DateTime         @db.Timestamptz(6)
+  anomalia         anomalia[]
+  modelo_analitico modelo_analitico @relation(fields: [modelo_id], references: [id], onUpdate: NoAction, map: "fk_ejecucion_analitica_modelo_id")
+  usuario          usuario          @relation(fields: [solicitante_id], references: [id], onUpdate: NoAction, map: "fk_ejecucion_analitica_solicitante_id")
+  prediccion       prediccion[]
+  recomendacion    recomendacion[]
+
+  @@index([modelo_id], map: "ix_ejecucion_analitica_modelo_id")
+  @@index([solicitante_id], map: "ix_ejecucion_analitica_solicitante_id")
+}
+
+model evento_pago {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pago_id          String    @db.Uuid
+  proveedor        String    @db.VarChar(60)
+  evento_externo   String    @db.VarChar(180)
+  tipo             String    @db.VarChar(50)
+  firma_verificada Boolean
+  payload_resumen  Json
+  recibido_en      DateTime  @db.Timestamptz(6)
+  procesado_en     DateTime? @db.Timestamptz(6)
+  error_codigo     String?   @db.VarChar(60)
+  pago             pago      @relation(fields: [pago_id], references: [id], onUpdate: NoAction, map: "fk_evento_pago_pago_id")
+
+  @@unique([proveedor, evento_externo])
+  @@index([pago_id], map: "ix_evento_pago_pago_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model evento_vestidor {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sesion_id       String          @db.Uuid
+  variante_id     String?         @db.Uuid
+  modelo_id       String?         @db.Uuid
+  evento_cliente  String          @unique @db.Uuid
+  tipo            String          @db.VarChar(20)
+  error_codigo    String?         @db.VarChar(60)
+  ocurrido_en     DateTime        @db.Timestamptz(6)
+  modelo_prenda   modelo_prenda?  @relation(fields: [modelo_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_evento_vestidor_modelo_id")
+  sesion_vestidor sesion_vestidor @relation(fields: [sesion_id], references: [id], onUpdate: NoAction, map: "fk_evento_vestidor_sesion_id")
+  variante        variante?       @relation(fields: [variante_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_evento_vestidor_variante_id")
+  item_carrito    item_carrito[]
+
+  @@index([modelo_id], map: "ix_evento_vestidor_modelo_id")
+  @@index([sesion_id], map: "ix_evento_vestidor_sesion_id")
+  @@index([variante_id], map: "ix_evento_vestidor_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model foto_temporal {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  captura_id       String           @db.Uuid
+  vista            String           @db.VarChar(10)
+  clave_objeto     String?          @db.VarChar(500)
+  mime             String           @db.VarChar(40)
+  bytes            Int
+  validacion       Json?
+  purgada_en       DateTime?        @db.Timestamptz(6)
+  captura_corporal captura_corporal @relation(fields: [captura_id], references: [id], onUpdate: NoAction, map: "fk_foto_temporal_captura_id")
+
+  @@unique([captura_id, vista])
+  @@index([captura_id], map: "ix_foto_temporal_captura_id")
+}
+
+model historial_pedido {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedido_id       String   @db.Uuid
+  actor_id        String?  @db.Uuid
+  estado_anterior String?  @db.VarChar(25)
+  estado_nuevo    String   @db.VarChar(25)
+  motivo          String   @db.VarChar(400)
+  creado_en       DateTime @db.Timestamptz(6)
+  usuario         usuario? @relation(fields: [actor_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_historial_pedido_actor_id")
+  pedido          pedido   @relation(fields: [pedido_id], references: [id], onUpdate: NoAction, map: "fk_historial_pedido_pedido_id")
+
+  @@index([actor_id], map: "ix_historial_pedido_actor_id")
+  @@index([pedido_id], map: "ix_historial_pedido_pedido_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model inventario {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variante_id      String             @db.Uuid
+  ubicacion_id     String             @db.Uuid
+  fisico           Int
+  reservado        Int
+  comprometido     Int
+  disponible       Int?               @default(dbgenerated("((fisico - reservado) - comprometido)"))
+  version          Int
+  ubicacion        ubicacion          @relation(fields: [ubicacion_id], references: [id], onUpdate: NoAction, map: "fk_inventario_ubicacion_id")
+  variante         variante           @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_inventario_variante_id")
+  movimiento_stock movimiento_stock[]
+  reserva_stock    reserva_stock[]
+
+  @@unique([variante_id, ubicacion_id])
+  @@index([ubicacion_id], map: "ix_inventario_ubicacion_id")
+  @@index([variante_id], map: "ix_inventario_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model item_carrito {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  carrito_id         String           @db.Uuid
+  variante_id        String           @db.Uuid
+  cantidad           Int
+  evento_vestidor_id String?          @db.Uuid
+  carrito            carrito          @relation(fields: [carrito_id], references: [id], onUpdate: NoAction, map: "fk_item_carrito_carrito_id")
+  evento_vestidor    evento_vestidor? @relation(fields: [evento_vestidor_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_item_carrito_evento_vestidor_id")
+  variante           variante         @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_item_carrito_variante_id")
+
+  @@unique([carrito_id, variante_id])
+  @@index([carrito_id], map: "ix_item_carrito_carrito_id")
+  @@index([evento_vestidor_id], map: "ix_item_carrito_evento_vestidor_id")
+  @@index([variante_id], map: "ix_item_carrito_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model modelo_analitico {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo                String                @db.VarChar(20)
+  nombre              String                @db.VarChar(80)
+  version             String                @db.VarChar(40)
+  parametros          Json
+  metricas_validacion Json?
+  estado              String                @db.VarChar(20)
+  consulta_analitica  consulta_analitica[]
+  ejecucion_analitica ejecucion_analitica[]
+
+  @@unique([tipo, nombre, version])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model modelo_prenda {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variante_id        String             @db.Uuid
+  plantilla_id       String             @db.Uuid
+  version            Int
+  clave_glb          String             @db.VarChar(500)
+  ajuste             Json
+  bytes              Int
+  triangulos         Int
+  licencia           String             @db.VarChar(255)
+  estado             String             @db.VarChar(20)
+  revisado_por       String?            @db.Uuid
+  creado_en          DateTime           @db.Timestamptz(6)
+  evento_vestidor    evento_vestidor[]
+  plantilla_corporal plantilla_corporal @relation(fields: [plantilla_id], references: [id], onUpdate: NoAction, map: "fk_modelo_prenda_plantilla_id")
+  usuario            usuario?           @relation(fields: [revisado_por], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_modelo_prenda_revisado_por")
+  variante           variante           @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_modelo_prenda_variante_id")
+
+  @@unique([variante_id, plantilla_id, version])
+  @@index([plantilla_id], map: "ix_modelo_prenda_plantilla_id")
+  @@index([revisado_por], map: "ix_modelo_prenda_revisado_por")
+  @@index([variante_id], map: "ix_modelo_prenda_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model movimiento_stock {
+  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventario_id      String     @db.Uuid
+  grupo_operacion    String     @db.Uuid
+  tipo               String     @db.VarChar(25)
+  delta_fisico       Int
+  delta_reservado    Int
+  delta_comprometido Int
+  conteo_observado   Int?
+  motivo             String     @db.VarChar(400)
+  actor_id           String     @db.Uuid
+  pedido_id          String?    @db.Uuid
+  creado_en          DateTime   @db.Timestamptz(6)
+  usuario            usuario    @relation(fields: [actor_id], references: [id], onUpdate: NoAction, map: "fk_movimiento_stock_actor_id")
+  inventario         inventario @relation(fields: [inventario_id], references: [id], onUpdate: NoAction, map: "fk_movimiento_stock_inventario_id")
+  pedido             pedido?    @relation(fields: [pedido_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_movimiento_stock_pedido_id")
+
+  @@index([actor_id], map: "ix_movimiento_stock_actor_id")
+  @@index([inventario_id], map: "ix_movimiento_stock_inventario_id")
+  @@index([pedido_id], map: "ix_movimiento_stock_pedido_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notificacion {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id     String        @db.Uuid
+  evento_id      String        @db.Uuid
+  dispositivo_id String?       @db.Uuid
+  tipo           String        @db.VarChar(40)
+  contenido      Json
+  estado         String        @db.VarChar(20)
+  intentos       Int
+  creada_en      DateTime      @db.Timestamptz(6)
+  enviada_en     DateTime?     @db.Timestamptz(6)
+  leida_en       DateTime?     @db.Timestamptz(6)
+  ultimo_error   String?       @db.VarChar(150)
+  dispositivo    dispositivo?  @relation(fields: [dispositivo_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_notificacion_dispositivo_id")
+  outbox_evento  outbox_evento @relation(fields: [evento_id], references: [id], onUpdate: NoAction, map: "fk_notificacion_evento_id")
+  usuario        usuario       @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_notificacion_usuario_id")
+
+  @@unique([usuario_id, evento_id, dispositivo_id])
+  @@index([dispositivo_id], map: "ix_notificacion_dispositivo_id")
+  @@index([evento_id], map: "ix_notificacion_evento_id")
+  @@index([usuario_id], map: "ix_notificacion_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model outbox_evento {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clave        String         @unique @db.VarChar(180)
+  tipo         String         @db.VarChar(60)
+  entidad_id   String         @db.Uuid
+  payload      Json
+  creado_en    DateTime       @db.Timestamptz(6)
+  publicado_en DateTime?      @db.Timestamptz(6)
+  intentos     Int
+  notificacion notificacion[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pago {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedido_id     String        @db.Uuid
+  proveedor     String        @db.VarChar(60)
+  referencia    String?       @db.VarChar(160)
+  idempotencia  String        @unique @db.Uuid
+  monto         Decimal       @db.Decimal(12, 2)
+  moneda        String        @db.Char(3)
+  estado        String        @db.VarChar(20)
+  creado_en     DateTime      @db.Timestamptz(6)
+  confirmado_en DateTime?     @db.Timestamptz(6)
+  evento_pago   evento_pago[]
+  pedido        pedido        @relation(fields: [pedido_id], references: [id], onUpdate: NoAction, map: "fk_pago_pedido_id")
+  reembolso     reembolso[]
+
+  @@unique([proveedor, referencia])
+  @@index([pedido_id], map: "ix_pago_pedido_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pedido {
+  id                                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id                          String             @db.Uuid
+  vendedor_id                         String?            @db.Uuid
+  ubicacion_id                        String?            @db.Uuid
+  carrito_id                          String?            @unique @db.Uuid
+  numero                              String             @unique @db.VarChar(30)
+  canal                               String             @db.VarChar(10)
+  moneda                              String             @db.Char(3)
+  subtotal                            Decimal            @db.Decimal(12, 2)
+  descuento                           Decimal            @db.Decimal(12, 2)
+  impuesto                            Decimal            @db.Decimal(12, 2)
+  entrega                             Decimal            @db.Decimal(12, 2)
+  total                               Decimal            @db.Decimal(12, 2)
+  direccion_snapshot                  Json
+  reglas_snapshot                     Json
+  estado                              String             @db.VarChar(25)
+  seguimiento                         String?            @db.VarChar(150)
+  creado_en                           DateTime           @db.Timestamptz(6)
+  entregado_en                        DateTime?          @db.Timestamptz(6)
+  idempotencia                        String             @unique @db.Uuid
+  detalle_pedido                      detalle_pedido[]
+  devolucion                          devolucion[]
+  historial_pedido                    historial_pedido[]
+  movimiento_stock                    movimiento_stock[]
+  pago                                pago[]
+  carrito                             carrito?           @relation(fields: [carrito_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_pedido_carrito_id")
+  ubicacion                           ubicacion?         @relation(fields: [ubicacion_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_pedido_ubicacion_id")
+  usuario_pedido_usuario_idTousuario  usuario            @relation("pedido_usuario_idTousuario", fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_pedido_usuario_id")
+  usuario_pedido_vendedor_idTousuario usuario?           @relation("pedido_vendedor_idTousuario", fields: [vendedor_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_pedido_vendedor_id")
+
+  @@index([carrito_id], map: "ix_pedido_carrito_id")
+  @@index([ubicacion_id], map: "ix_pedido_ubicacion_id")
+  @@index([usuario_id], map: "ix_pedido_usuario_id")
+  @@index([vendedor_id], map: "ix_pedido_vendedor_id")
+  @@index([creado_en, canal, estado], map: "pedido_periodo")
+}
+
+model permiso {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recurso     String        @db.VarChar(60)
+  accion      String        @db.VarChar(30)
+  descripcion String        @db.VarChar(200)
+  rol_permiso rol_permiso[]
+
+  @@unique([recurso, accion])
+}
+
+model plantilla_corporal {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre            String          @db.VarChar(80)
+  version           String          @db.VarChar(30)
+  clave_malla       String          @db.VarChar(500)
+  esqueleto_version String          @db.VarChar(40)
+  parametros        Json
+  licencia          String          @db.VarChar(255)
+  activa            Boolean
+  avatar            avatar[]
+  modelo_prenda     modelo_prenda[]
+
+  @@unique([nombre, version])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model precio_canal {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variante_id   String    @db.Uuid
+  canal         String    @db.VarChar(10)
+  moneda        String    @db.Char(3)
+  importe       Decimal   @db.Decimal(12, 2)
+  descuento_pct Decimal   @db.Decimal(5, 2)
+  desde         DateTime  @db.Timestamptz(6)
+  hasta         DateTime? @db.Timestamptz(6)
+  variante      variante  @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_precio_canal_variante_id")
+
+  @@unique([variante_id, canal, desde])
+  @@index([variante_id], map: "ix_precio_canal_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model prediccion {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ejecucion_id        String              @db.Uuid
+  variante_id         String              @db.Uuid
+  ubicacion_id        String              @db.Uuid
+  canal               String              @db.VarChar(10)
+  fecha               DateTime            @db.Date
+  cantidad            Decimal             @db.Decimal(12, 3)
+  limite_inferior     Decimal?            @db.Decimal(12, 3)
+  limite_superior     Decimal?            @db.Decimal(12, 3)
+  ejecucion_analitica ejecucion_analitica @relation(fields: [ejecucion_id], references: [id], onUpdate: NoAction, map: "fk_prediccion_ejecucion_id")
+  ubicacion           ubicacion           @relation(fields: [ubicacion_id], references: [id], onUpdate: NoAction, map: "fk_prediccion_ubicacion_id")
+  variante            variante            @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_prediccion_variante_id")
+
+  @@unique([ejecucion_id, variante_id, ubicacion_id, canal, fecha])
+  @@index([ejecucion_id], map: "ix_prediccion_ejecucion_id")
+  @@index([ubicacion_id], map: "ix_prediccion_ubicacion_id")
+  @@index([variante_id], map: "ix_prediccion_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model producto {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria_id     String             @db.Uuid
+  nombre           String             @db.VarChar(160)
+  descripcion      String
+  coleccion        String?            @db.VarChar(100)
+  marca            String?            @db.VarChar(100)
+  material         String             @db.VarChar(150)
+  estado           String             @db.VarChar(20)
+  creado_en        DateTime           @db.Timestamptz(6)
+  categoria        categoria          @relation(fields: [categoria_id], references: [id], onUpdate: NoAction, map: "fk_producto_categoria_id")
+  recurso_catalogo recurso_catalogo[]
+  variante         variante[]
+
+  @@index([categoria_id], map: "ix_producto_categoria_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model recomendacion {
+  id                                            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ejecucion_id                                  String?              @db.Uuid
+  variante_id                                   String               @db.Uuid
+  origen_id                                     String?              @db.Uuid
+  destino_id                                    String               @db.Uuid
+  tipo                                          String               @db.VarChar(15)
+  cantidad                                      Int
+  cobertura_dias                                Int
+  motivo                                        Json
+  estado                                        String               @db.VarChar(20)
+  revisado_por                                  String?              @db.Uuid
+  observacion                                   String?              @db.VarChar(500)
+  grupo_movimiento                              String?              @db.Uuid
+  ubicacion_recomendacion_destino_idToubicacion ubicacion            @relation("recomendacion_destino_idToubicacion", fields: [destino_id], references: [id], onUpdate: NoAction, map: "fk_recomendacion_destino_id")
+  ejecucion_analitica                           ejecucion_analitica? @relation(fields: [ejecucion_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_recomendacion_ejecucion_id")
+  ubicacion_recomendacion_origen_idToubicacion  ubicacion?           @relation("recomendacion_origen_idToubicacion", fields: [origen_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_recomendacion_origen_id")
+  usuario                                       usuario?             @relation(fields: [revisado_por], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_recomendacion_revisado_por")
+  variante                                      variante             @relation(fields: [variante_id], references: [id], onUpdate: NoAction, map: "fk_recomendacion_variante_id")
+
+  @@index([destino_id], map: "ix_recomendacion_destino_id")
+  @@index([ejecucion_id], map: "ix_recomendacion_ejecucion_id")
+  @@index([origen_id], map: "ix_recomendacion_origen_id")
+  @@index([revisado_por], map: "ix_recomendacion_revisado_por")
+  @@index([variante_id], map: "ix_recomendacion_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model recurso_catalogo {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  producto_id       String    @db.Uuid
+  variante_id       String?   @db.Uuid
+  clave_objeto      String    @db.VarChar(500)
+  tipo_mime         String    @db.VarChar(80)
+  orden             Int
+  texto_alternativo String    @db.VarChar(255)
+  embedding         Json?
+  licencia          String    @db.VarChar(255)
+  producto          producto  @relation(fields: [producto_id], references: [id], onUpdate: NoAction, map: "fk_recurso_catalogo_producto_id")
+  variante          variante? @relation(fields: [variante_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_recurso_catalogo_variante_id")
+
+  @@index([producto_id], map: "ix_recurso_catalogo_producto_id")
+  @@index([variante_id], map: "ix_recurso_catalogo_variante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reembolso {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pago_id       String      @db.Uuid
+  devolucion_id String?     @db.Uuid
+  idempotencia  String      @unique @db.Uuid
+  referencia    String?     @db.VarChar(160)
+  monto         Decimal     @db.Decimal(12, 2)
+  estado        String      @db.VarChar(20)
+  motivo        String      @db.VarChar(400)
+  creado_en     DateTime    @db.Timestamptz(6)
+  confirmado_en DateTime?   @db.Timestamptz(6)
+  devolucion    devolucion? @relation(fields: [devolucion_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_reembolso_devolucion_id")
+  pago          pago        @relation(fields: [pago_id], references: [id], onUpdate: NoAction, map: "fk_reembolso_pago_id")
+
+  @@unique([pago_id, referencia])
+  @@index([devolucion_id], map: "ix_reembolso_devolucion_id")
+  @@index([pago_id], map: "ix_reembolso_pago_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reserva_stock {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  detalle_pedido_id String         @db.Uuid
+  inventario_id     String         @db.Uuid
+  cantidad          Int
+  estado            String         @db.VarChar(20)
+  creada_en         DateTime       @db.Timestamptz(6)
+  vence_en          DateTime       @db.Timestamptz(6)
+  cerrada_en        DateTime?      @db.Timestamptz(6)
+  detalle_pedido    detalle_pedido @relation(fields: [detalle_pedido_id], references: [id], onUpdate: NoAction, map: "fk_reserva_stock_detalle_pedido_id")
+  inventario        inventario     @relation(fields: [inventario_id], references: [id], onUpdate: NoAction, map: "fk_reserva_stock_inventario_id")
+
+  @@index([detalle_pedido_id], map: "ix_reserva_stock_detalle_pedido_id")
+  @@index([inventario_id], map: "ix_reserva_stock_inventario_id")
+}
+
+model rol {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre      String        @unique @db.VarChar(60)
+  descripcion String        @db.VarChar(255)
+  protegido   Boolean
+  rol_permiso rol_permiso[]
+  usuario_rol usuario_rol[]
+}
+
+model rol_permiso {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rol_id     String  @db.Uuid
+  permiso_id String  @db.Uuid
+  permiso    permiso @relation(fields: [permiso_id], references: [id], onUpdate: NoAction, map: "fk_rol_permiso_permiso_id")
+  rol        rol     @relation(fields: [rol_id], references: [id], onUpdate: NoAction, map: "fk_rol_permiso_rol_id")
+
+  @@unique([rol_id, permiso_id])
+  @@index([permiso_id], map: "ix_rol_permiso_permiso_id")
+  @@index([rol_id], map: "ix_rol_permiso_rol_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model sesion {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id    String    @db.Uuid
+  refresh_hash  String    @unique @db.VarChar(255)
+  creada_en     DateTime  @db.Timestamptz(6)
+  vence_en      DateTime  @db.Timestamptz(6)
+  revocada_en   DateTime? @db.Timestamptz(6)
+  ultimo_acceso DateTime? @db.Timestamptz(6)
+  usuario       usuario   @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_sesion_usuario_id")
+
+  @@index([usuario_id], map: "ix_sesion_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model sesion_vestidor {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id      String            @db.Uuid
+  avatar_id       String?           @db.Uuid
+  canal           String            @db.VarChar(10)
+  iniciada_en     DateTime          @db.Timestamptz(6)
+  finalizada_en   DateTime?         @db.Timestamptz(6)
+  evento_vestidor evento_vestidor[]
+  avatar          avatar?           @relation(fields: [avatar_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_sesion_vestidor_avatar_id")
+  usuario         usuario           @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_sesion_vestidor_usuario_id")
+
+  @@index([avatar_id], map: "ix_sesion_vestidor_avatar_id")
+  @@index([usuario_id], map: "ix_sesion_vestidor_usuario_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model trabajo_avatar {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id       String            @db.Uuid
+  captura_id       String?           @db.Uuid
+  avatar_id        String?           @db.Uuid
+  tipo             String            @db.VarChar(15)
+  estado           String            @db.VarChar(20)
+  idempotencia     String            @unique @db.Uuid
+  intentos         Int
+  version_proceso  String            @db.VarChar(50)
+  parametros       Json?
+  error_codigo     String?           @db.VarChar(60)
+  creado_en        DateTime          @db.Timestamptz(6)
+  iniciado_en      DateTime?         @db.Timestamptz(6)
+  terminado_en     DateTime?         @db.Timestamptz(6)
+  avatar           avatar?           @relation(fields: [avatar_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_trabajo_avatar_avatar_id")
+  captura_corporal captura_corporal? @relation(fields: [captura_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_trabajo_avatar_captura_id")
+  usuario          usuario           @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_trabajo_avatar_usuario_id")
+
+  @@index([avatar_id], map: "ix_trabajo_avatar_avatar_id")
+  @@index([captura_id], map: "ix_trabajo_avatar_captura_id")
+  @@index([usuario_id], map: "ix_trabajo_avatar_usuario_id")
+  @@index([estado, creado_en], map: "trabajos_pendientes")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ubicacion {
+  id                                                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  padre_id                                          String?                @db.Uuid
+  nombre                                            String                 @db.VarChar(120)
+  tipo                                              String                 @db.VarChar(20)
+  direccion                                         String?                @db.VarChar(300)
+  activa                                            Boolean
+  detalle_devolucion                                detalle_devolucion[]
+  disponibilidad_canal                              disponibilidad_canal[]
+  inventario                                        inventario[]
+  pedido                                            pedido[]
+  prediccion                                        prediccion[]
+  recomendacion_recomendacion_destino_idToubicacion recomendacion[]        @relation("recomendacion_destino_idToubicacion")
+  recomendacion_recomendacion_origen_idToubicacion  recomendacion[]        @relation("recomendacion_origen_idToubicacion")
+  ubicacion                                         ubicacion?             @relation("ubicacionToubicacion", fields: [padre_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_ubicacion_padre_id")
+  other_ubicacion                                   ubicacion[]            @relation("ubicacionToubicacion")
+  usuario_ubicacion                                 usuario_ubicacion[]
+
+  @@index([padre_id], map: "ix_ubicacion_padre_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model usuario {
+  id                                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombres                                     String                @db.VarChar(100)
+  apellidos                                   String                @db.VarChar(120)
+  correo                                      String                @unique @db.VarChar(160)
+  clave_hash                                  String                @db.VarChar(255)
+  telefono                                    String?               @db.VarChar(30)
+  estado                                      String                @db.VarChar(20)
+  preferencias                                Json
+  creado_en                                   DateTime              @db.Timestamptz(6)
+  anomalia                                    anomalia[]
+  auditoria                                   auditoria[]
+  avatar                                      avatar[]
+  aviso                                       aviso[]
+  captura_corporal                            captura_corporal[]
+  carrito                                     carrito[]
+  configuracion                               configuracion[]
+  consentimiento                              consentimiento[]
+  consulta_analitica                          consulta_analitica[]
+  devolucion_devolucion_revisado_porTousuario devolucion[]          @relation("devolucion_revisado_porTousuario")
+  devolucion_devolucion_usuario_idTousuario   devolucion[]          @relation("devolucion_usuario_idTousuario")
+  direccion                                   direccion[]
+  dispositivo                                 dispositivo[]
+  ejecucion_analitica                         ejecucion_analitica[]
+  historial_pedido                            historial_pedido[]
+  modelo_prenda                               modelo_prenda[]
+  movimiento_stock                            movimiento_stock[]
+  notificacion                                notificacion[]
+  pedido_pedido_usuario_idTousuario           pedido[]              @relation("pedido_usuario_idTousuario")
+  pedido_pedido_vendedor_idTousuario          pedido[]              @relation("pedido_vendedor_idTousuario")
+  recomendacion                               recomendacion[]
+  sesion                                      sesion[]
+  sesion_vestidor                             sesion_vestidor[]
+  trabajo_avatar                              trabajo_avatar[]
+  usuario_rol                                 usuario_rol[]
+  usuario_ubicacion                           usuario_ubicacion[]
+}
+
+model usuario_rol {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id  String   @db.Uuid
+  rol_id      String   @db.Uuid
+  asignado_en DateTime @db.Timestamptz(6)
+  rol         rol      @relation(fields: [rol_id], references: [id], onUpdate: NoAction, map: "fk_usuario_rol_rol_id")
+  usuario     usuario  @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_usuario_rol_usuario_id")
+
+  @@unique([usuario_id, rol_id])
+  @@index([rol_id], map: "ix_usuario_rol_rol_id")
+  @@index([usuario_id], map: "ix_usuario_rol_usuario_id")
+}
+
+model usuario_ubicacion {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id   String    @db.Uuid
+  ubicacion_id String    @db.Uuid
+  ubicacion    ubicacion @relation(fields: [ubicacion_id], references: [id], onUpdate: NoAction, map: "fk_usuario_ubicacion_ubicacion_id")
+  usuario      usuario   @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_usuario_ubicacion_usuario_id")
+
+  @@unique([usuario_id, ubicacion_id])
+  @@index([ubicacion_id], map: "ix_usuario_ubicacion_ubicacion_id")
+  @@index([usuario_id], map: "ix_usuario_ubicacion_usuario_id")
+}
+
+model variante {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  producto_id          String                 @db.Uuid
+  sku                  String                 @unique @db.VarChar(60)
+  codigo_barras        String?                @unique @db.VarChar(80)
+  talla                String                 @db.VarChar(20)
+  color                String                 @db.VarChar(50)
+  color_hex            String?                @db.VarChar(7)
+  activa               Boolean
+  detalle_pedido       detalle_pedido[]
+  disponibilidad_canal disponibilidad_canal[]
+  evento_vestidor      evento_vestidor[]
+  inventario           inventario[]
+  item_carrito         item_carrito[]
+  modelo_prenda        modelo_prenda[]
+  precio_canal         precio_canal[]
+  prediccion           prediccion[]
+  recomendacion        recomendacion[]
+  recurso_catalogo     recurso_catalogo[]
+  producto             producto               @relation(fields: [producto_id], references: [id], onUpdate: NoAction, map: "fk_variante_producto_id")
+
+  @@unique([producto_id, talla, color])
+  @@index([producto_id], map: "ix_variante_producto_id")
+}

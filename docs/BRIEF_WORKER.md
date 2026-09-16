@@ -1,5 +1,6 @@
 # Procesamiento corporal y recursos 3D
-Trabaja exclusivamente en workers/avatar/** y docs/WORKER_AVATAR.md. Lee docs/PLAN_CICLO1.md, en particular el contrato CLI. NO crear subagentes. No editar API, web, package.json ni git compartido. Reporta en docs/WORKER_REPORT.md y devuelve resumen breve.
+
+Trabaja exclusivamente en workers/avatar/\*\* y docs/WORKER_AVATAR.md. Lee docs/PLAN_CICLO1.md, en particular el contrato CLI. NO crear subagentes. No editar API, web, package.json ni git compartido. Reporta en docs/WORKER_REPORT.md y devuelve resumen breve.
 
 Implementa un pipeline real Python MediaPipe + OpenCV que valida tres fotos completas, calidad y una sola persona; obtiene silueta y proporciones mediante fotos y altura, genera avatar paramétrico neutro (no precisión médica ni fotorealista) y exporta GLB compatible con la camiseta preparada. Usa Blender en el pipeline si está disponible; puedes preparar/descargar binario portable local desde origen oficial en .local o usar bpy en .venv de worker. No hay Blender instalado a priori. Python 3.12 instalado en PATH; Windows. No fingir éxito si dependencia falta. Investiga herramientas primarias necesarias.
 

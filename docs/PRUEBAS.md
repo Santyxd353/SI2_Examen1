@@ -1,0 +1,48 @@
+# Verificación del primer avance
+
+Fecha: 16 de septiembre de 2026. Entorno local Windows, Node 22.19, PostgreSQL 18 y Python 3.12. Las pruebas se ejecutaron sobre implementación existente. Los resultados no equivalen a la aprobación de todos los casos de uso del documento.
+
+## Resultados
+
+| Comprobación      | Resultado y alcance                                                                                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Preparación local | `setup.ps1` completó instalación reproducible desde los bloqueos de dependencias, verificación de recursos, generación de GLB, semilla y compilación. Se probó sobre este equipo con clúster y descargas ya existentes; no en un segundo equipo limpio |
+| Esquema           | 49 tablas funcionales y 83 claves foráneas consultadas en PostgreSQL; Prisma válido y migración aplicada sin pendientes                                                                                                                                |
+| API               | **19 pruebas de integración aprobadas** en `vestidor18_test`                                                                                                                                                                                           |
+| Python/Blender    | **9 pruebas aprobadas**, incluyendo exportación de un GLB cuya altura geométrica corresponde a 1,85 m, dentro de 2 cm de tolerancia                                                                                                                    |
+| Navegador         | Registro, catálogo, captura, acceso privado a fixture, aprobación, dos prendas sucesivas, borrado y sesión durante descarga verificados con Chromium                                                                                                   |
+| Adaptación móvil  | Anchura de 390 px, sin desbordamiento horizontal ni errores JavaScript en el recorrido ejecutado                                                                                                                                                       |
+| Dependencias      | `npm audit` sin vulnerabilidades reportadas; `pip check` sin incompatibilidades                                                                                                                                                                        |
+
+## API: lo que se comprueba
+
+`apps/api/test/access.test.ts` cubre registro exclusivo Cliente, intento de asignar un rol interno, límite UTF-8 de contraseña, correo duplicado normalizado, contraseña incorrecta, autenticación del perfil, renovación de un solo uso, revocación del acceso anterior, permiso de escritura de catálogo, precios/stock persistidos, captura incompleta, identificador de avatar inexistente, logout y renovación coincidente con logout.
+
+`apps/api/test/avatar.test.ts` usa archivos privados y PostgreSQL reales. Comprueba el acceso a un avatar existente desde dos cuentas diferentes; aprobación de una única versión; bloqueo inmediato y purga tras borrar; admisión de un único trabajo por usuario ante cargas simultáneas; idempotencia de la carga y purga tras un rechazo real de Python; e idempotencia concurrente de eventos de prueba de prendas, rechazando la reutilización del identificador con otro contenido.
+
+## Regresiones reproducidas y corregidas
+
+- La entrega autorizada del GLB fallaba al estar almacenado bajo `.local`: se corrigió el envío del archivo privado después del control de propietario.
+- Cambiar la prenda revocaba también la URL del cuerpo que seguía en uso: cada recurso conserva su propio ciclo de vida.
+- Un registro podía aceptar más de 72 bytes de contraseña y sufrir truncamiento en bcrypt: se valida la longitud UTF-8 antes de guardarla.
+- Renovar y cerrar sesión podían dejar una sesión sucesora válida: la renovación ahora rota sobre la misma fila, con comparación del hash y versión del acceso. Una cookie firmada anterior puede revocar esa misma sesión aunque acabe de rotar.
+- Una respuesta GLB retrasada hasta después del logout reponía el avatar: se invalidan respuestas pendientes por cuenta y por vista. La prueba retrasa la entrega real del archivo hasta después del cierre.
+- Abrir nuevamente el avatar durante su borrado podía impedir limpiar la vista: se bloquean acciones incompatibles mientras se confirma la operación.
+- Reintentos de eventos podían competir o aceptar otra prenda bajo el mismo identificador: se inserta sin duplicación y se verifica que el evento corresponda al mismo contenido.
+
+## Evidencia visual
+
+`scripts/check-ui.cjs` guarda `ui-desktop.png`, `ui-avatar.png`, `ui-fitting.png`, `ui-mobile.png` y `ui-result.json` en `.local`. Los avatares utilizados por esa prueba son copias explícitas del maniquí asignadas a cuentas de prueba; **no provienen de una reconstrucción fotográfica**.
+
+## Pendiente de acreditar
+
+- Generación satisfactoria desde tres fotografías reales autorizadas y calidad para personas de distintas proporciones.
+- Precisión/calibración de medidas, reconocimiento de orientación de vistas y ajuste de prendas a cuerpos distintos.
+- Corrección de avatares, administración completa, Android, ciclos 2 y 3 y despliegue.
+- Resiliencia bajo carga, fallos de disco, interrupciones prolongadas y políticas de respaldos.
+
+Python muestra dos avisos de obsolescencia de protobuf sobre cambios futuros en Python 3.14; el entorno probado usa Python 3.12. Las pruebas de aceptación de `linea-base.json` permanecen pendientes hasta ejecutarse con sus condiciones completas.
+
+## Versiones corregidas de dependencias
+
+Se fija Multer 2.4.0 también dentro de NestJS, y deepmerge-ts 8.0.0 dentro de Prisma. Las excepciones de resolución están en `package.json` y quedaron verificadas por compilación, migraciones y pruebas. Corresponden a los avisos de [Multer](https://github.com/expressjs/multer/security/advisories/GHSA-wc9g-mqfw-jrwm) y [DeepmergeTS](https://github.com/advisories/GHSA-ggr8-5vv4-36mx).

@@ -1,0 +1,7 @@
+node_modules
+dist
+.local
+workers
+prisma
+package-lock.json
+docs/linea-base.json
