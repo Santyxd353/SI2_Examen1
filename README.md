@@ -1,6 +1,15 @@
 # Vestidor 3D · Grupo 18
 
-Primera entrega ejecutable del ciclo 1 del documento **Plataforma_Vestidor3D_Grupo18.docx**. El desarrollo conserva el alcance aprobado y registra los pendientes en [docs/AVANCE.md](docs/AVANCE.md). Esta versión no representa el sistema final ni el cierre del ciclo 1.
+Primera entrega ejecutable del ciclo 1 del documento [Plataforma_Vestidor3D_Grupo18.docx](docs/Plataforma_Vestidor3D_Grupo18.docx), también disponible en [PDF](docs/Plataforma_Vestidor3D_Grupo18.pdf). El desarrollo conserva el alcance aprobado y registra los pendientes en [docs/AVANCE.md](docs/AVANCE.md). Esta versión no representa el sistema final ni el cierre del ciclo 1.
+
+Repositorio oficial: [Santyxd353/SI2_Examen1](https://github.com/Santyxd353/SI2_Examen1). Rama principal: `main`.
+
+Para obtener el proyecto:
+
+```powershell
+git clone https://github.com/Santyxd353/SI2_Examen1.git
+cd SI2_Examen1
+```
 
 ## Abrir en este equipo
 

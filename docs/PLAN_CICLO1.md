@@ -1,6 +1,6 @@
 # Inicio del ciclo 1
 
-Diseño aprobado: ../Plataforma_Vestidor3D_Grupo18.docx (secciones 1.8, 1.9, 2.5, 4, 5.1 y 5.4).
+Diseño aprobado: [Plataforma_Vestidor3D_Grupo18.docx](Plataforma_Vestidor3D_Grupo18.docx) (secciones 1.8, 1.9, 2.5, 4, 5.1 y 5.4).
 La autorización del usuario del 16-09-2026 pide comenzar con el stack y alcance ya definidos.
 
 Arquitectura: monorepositorio npm; API NestJS/TypeScript; web React/TypeScript/Three.js; PostgreSQL y Prisma; proceso Python para fotos y GLB. Aplicación Android prevista mediante React Native y WebView. Puerto API 3018 y web 5173; PostgreSQL de desarrollo independiente en 55418. Archivos privados fuera del directorio público.
