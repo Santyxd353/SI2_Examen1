@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,7 +19,7 @@ import Svg, { Polygon } from 'react-native-svg';
 import { api, login, logout, restoreSession } from './api';
 import { connectRealtime } from './realtime';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
-import { garmentKind, garmentOutline, projectTorso } from './pose';
+import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
 import type { Layout, Torso } from './pose';
 import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
 
@@ -273,6 +274,9 @@ function ArCamera({
   const [retry, setRetry] = useState(0);
   const kind = garmentKind(product.nombre);
   const nativeAvailable = isPoseAvailable();
+  const illustrativeSample =
+    product.id === '20000000-0000-4000-8000-000000000001' &&
+    variant.color.toLowerCase() === 'marfil';
 
   useEffect(() => {
     if (
@@ -367,7 +371,13 @@ function ArCamera({
           })
         }
       >
-        {torso && kind !== 'unsupported' ? (
+        {torso && illustrativeSample ? (
+          <Image
+            source={require('../assets/camiseta-marfil-muestra.png')}
+            resizeMode="stretch"
+            style={[styles.garmentImage, garmentImageFrame(torso)]}
+          />
+        ) : torso && kind !== 'unsupported' ? (
           <Svg width={layout.width} height={layout.height}>
             <Polygon
               points={garmentOutline(torso, kind)
@@ -420,6 +430,12 @@ function ArCamera({
           >
             <Text style={styles.primaryText}>Reintentar detección</Text>
           </Pressable>
+        )}
+        {illustrativeSample && (
+          <Text style={styles.cameraPrivacy}>
+            Camiseta ilustrativa generada para la prueba; no es la foto del producto ni representa
+            el ajuste de la talla.
+          </Text>
         )}
         <Text style={styles.cameraPrivacy}>
           La cámara se procesa en el dispositivo; las capturas temporales se eliminan.
@@ -602,6 +618,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  garmentImage: { position: 'absolute', opacity: 0.92 },
   garmentLabel: { color: '#fff', fontWeight: '700', textShadowColor: '#0008', textShadowRadius: 5 },
   cameraBottom: {
     position: 'absolute',

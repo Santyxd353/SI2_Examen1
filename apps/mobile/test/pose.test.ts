@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { garmentKind, garmentOutline, projectTorso } from '../src/pose';
+import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from '../src/pose';
 import type { PoseResult } from '../modules/pose-landmarker/src';
 
 const pose: PoseResult = {
@@ -41,4 +41,13 @@ test('el vestido cubre más largo que una blusa', () => {
   assert.equal(garmentKind('Blusa blanca'), 'top');
   assert.equal(garmentKind('Pantalón'), 'unsupported');
   assert.ok(garmentOutline(torso, 'dress')[4]!.y > garmentOutline(torso, 'top')[4]!.y);
+});
+
+test('la imagen ilustrativa se ancla a hombros y cadera', () => {
+  const torso = projectTorso(pose, { width: 400, height: 800 });
+  assert.ok(torso);
+  const frame = garmentImageFrame(torso);
+  assert.equal(frame.left + frame.width / 2, 200);
+  assert.ok(frame.top < torso.leftShoulder.y);
+  assert.ok(frame.top + frame.height > torso.leftHip.y);
 });

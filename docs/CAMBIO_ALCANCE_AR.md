@@ -28,12 +28,13 @@ La línea base original se conserva como evidencia documental. El código de ava
 - Canal WebSocket autenticado y suscripción a actualizaciones de inventario.
 - Emisión de actualización después de una venta.
 - Selección de variante de talla/color en catálogo móvil.
-- Primer módulo nativo Android con MediaPipe Pose Landmarker: detección local de hombros y cadera a partir de capturas temporales, proyección con recorte de cámara, suavizado y silueta vectorial diferenciada para blusa/vestido. Requiere development build; aún no se compiló ni calibró en teléfono físico.
+- Primer módulo nativo Android con MediaPipe Pose Landmarker: detección local de hombros y cadera a partir de capturas temporales, proyección con recorte de cámara, suavizado y silueta vectorial diferenciada para blusa/vestido. Se compiló en EAS y el usuario confirmó que la superposición aparece en su teléfono Android.
+- Muestra ilustrativa PNG con fondo transparente para «Camiseta esencial / Marfil», anclada a hombros y cadera. No representa una foto real del inventario.
 
 ## Pendiente antes de llamarlo vestidor AR funcional
 
-1. Compilar y validar el módulo MediaPipe en una development build Android física; sustituir muestreo de capturas por procesamiento continuo de fotogramas.
-2. Obtener recursos autorizados de una blusa y un vestido con fondo transparente.
+1. Sustituir el muestreo de capturas por procesamiento continuo de fotogramas.
+2. Obtener fotografías autorizadas de una blusa y un vestido con fondo transparente y asociarlas a sus variantes reales del catálogo.
 3. Definir anclajes y deformación desde hombros, cintura y cadera.
 4. Implementar suavizado, orientación, oclusión por brazos y control de cuerpo completo visible.
 5. Probar rendimiento, iluminación, cuerpos y teléfonos diferentes.

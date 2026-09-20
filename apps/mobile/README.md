@@ -4,6 +4,8 @@ Base React Native/Expo para reemplazar el avatar 3D por una experiencia de cáma
 
 Se añadió un primer seguimiento corporal experimental para Android: un módulo nativo MediaPipe analiza capturas temporales de la cámara y devuelve hombros y cadera. La superposición vectorial de blusas y vestidos se proyecta sobre esos puntos con suavizado. En Expo Go o iOS se muestra solo una guía; para ver el seguimiento hace falta una **development build Android**. Aún no son fotografías de prendas reales ni hay oclusión por brazos. La superposición aproximada no determina la talla correcta.
 
+La variante Marfil de «Camiseta esencial» incluye una imagen PNG transparente generada como muestra ilustrativa. Se ancla a hombros y cadera para probar la superposición de una prenda visual. No representa la foto del producto vendido ni simula el ajuste real de las tallas; las demás variantes mantienen la silueta vectorial hasta contar con imágenes propias autorizadas.
+
 ## Preparación
 
 1. Copia `.env.example` como `.env` y sustituye la dirección por la IP local de la computadora cuando uses un teléfono físico.
@@ -13,7 +15,7 @@ Se añadió un primer seguimiento corporal experimental para Android: un módulo
 
 Para un teléfono físico configura temporalmente `API_HOST=0.0.0.0` en el `.env` de la raíz y permite el puerto 3018 solamente en la red privada de Windows. Mantén `127.0.0.1` cuando no estés realizando pruebas móviles.
 
-El modelo oficial `pose_landmarker_lite.task` se descarga y verifica con SHA-256 durante la compilación de Android; queda dentro de la aplicación. La inferencia de imágenes se hace localmente. Cada captura se elimina de la caché tras analizarse. Para compilar localmente Android se necesita Android Studio/SDK; este incremento no ha sido validado en un teléfono físico. iOS requiere macOS/Xcode y un módulo nativo propio pendiente.
+El modelo oficial `pose_landmarker_lite.task` se descarga y verifica con SHA-256 durante la compilación de Android; queda dentro de la aplicación. La inferencia de imágenes se hace localmente. Cada captura se elimina de la caché tras analizarse. La development build Android se compiló en EAS y el seguimiento corporal se verificó en un teléfono físico; falta calibrar posición y rendimiento en más dispositivos. iOS requiere macOS/Xcode y un módulo nativo propio pendiente.
 
 La detección actual toma capturas discretas, aproximadamente una por segundo. El siguiente paso técnico es usar fotogramas en flujo continuo para lograr mayor fluidez, añadir prendas 2D autorizadas, calibrar la cámara frontal en distintos teléfonos y tratar brazos y otras oclusiones.
 

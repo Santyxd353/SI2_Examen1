@@ -5,6 +5,20 @@ export type Torso = { leftShoulder: Point; rightShoulder: Point; leftHip: Point;
 export type Layout = { width: number; height: number };
 export type GarmentKind = 'top' | 'dress' | 'unsupported';
 
+export function garmentImageFrame(torso: Torso) {
+  const shoulderWidth = torso.rightShoulder.x - torso.leftShoulder.x;
+  const shoulderY = (torso.leftShoulder.y + torso.rightShoulder.y) / 2;
+  const hipY = (torso.leftHip.y + torso.rightHip.y) / 2;
+  const torsoHeight = Math.max(hipY - shoulderY, shoulderWidth * 0.85);
+  const width = shoulderWidth * 1.55;
+  return {
+    left: (torso.leftShoulder.x + torso.rightShoulder.x - width) / 2,
+    top: shoulderY - torsoHeight * 0.08,
+    width,
+    height: torsoHeight * 1.18,
+  };
+}
+
 export function garmentKind(name: string): GarmentKind {
   if (/vestido|dress/i.test(name)) return 'dress';
   if (/blusa|camisa|camiseta|top|chaqueta|polera|suéter|sudadera/i.test(name)) return 'top';
