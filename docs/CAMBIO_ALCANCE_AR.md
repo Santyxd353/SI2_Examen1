@@ -32,14 +32,19 @@ La línea base original se conserva como evidencia documental. El código de ava
 - Muestra ilustrativa PNG con fondo transparente para «Camiseta esencial / Marfil», anclada a hombros y cadera. No representa una foto real del inventario.
 - Gestión de imágenes AR por variante desde el panel administrador: carga de PNG, licencia, texto alternativo, revisión en borrador y publicación. El catálogo móvil recibe únicamente la imagen publicada de cada variante.
 
-## Pendiente antes de llamarlo vestidor AR funcional
+## Pendientes aplazados a solicitud del usuario (20 de septiembre de 2026)
+
+1. Conseguir imágenes frontales autorizadas y con fondo transparente de una blusa y un vestido reales.
+2. Cargarlas en el panel administrador, asociarlas a sus variantes de talla y color, revisarlas y publicarlas. La herramienta de carga ya está implementada; faltan los archivos.
+3. Probar ambas prendas en un teléfono Android y ajustar posición, escala y seguimiento sobre el cuerpo.
+
+## Otros pendientes antes de llamarlo vestidor AR funcional
 
 1. Sustituir el muestreo de capturas por procesamiento continuo de fotogramas.
-2. Obtener fotografías autorizadas de una blusa y un vestido con fondo transparente y cargarlas en sus variantes reales del catálogo; hoy la herramienta de carga está lista, pero esos recursos aún no se han proporcionado.
-3. Definir anclajes y deformación desde hombros, cintura y cadera.
-4. Implementar suavizado, orientación, oclusión por brazos y control de cuerpo completo visible.
-5. Probar rendimiento, iluminación, cuerpos y teléfonos diferentes.
-6. Validar Android físico; después preparar y validar iOS desde un equipo Mac.
-7. Sustituir la navegación del avatar anterior solamente cuando la nueva experiencia esté validada.
+2. Definir anclajes y deformación desde hombros, cintura y cadera.
+3. Mejorar orientación, oclusión por brazos y control de cuerpo completo visible.
+4. Probar rendimiento, iluminación, cuerpos y teléfonos diferentes.
+5. Preparar y validar iOS desde un equipo Mac.
+6. Sustituir la navegación del avatar anterior solamente cuando la nueva experiencia esté validada.
 
 La visualización deberá mostrar siempre que es aproximada y que no garantiza el ajuste físico ni la talla real.
