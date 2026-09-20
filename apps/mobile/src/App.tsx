@@ -287,7 +287,7 @@ function ArCamera({
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     async function sample() {
-      let failed = false;
+      let retryDelay = 700;
       try {
         const capture = await camera.current?.takePictureAsync({
           quality: 0.35,
@@ -300,19 +300,23 @@ function ArCamera({
         const next = projectTorso(pose, layout, previous.current);
         previous.current = next;
         setTorso(next);
+        setTrackingError('');
         setTracking(
           next
             ? 'Prenda siguiendo hombros y cadera.'
-            : 'No se detectan hombros y cadera. Mejora la luz y encuadre.',
+            : pose.landmarks.length
+              ? 'Se detectó el cuerpo, pero faltan hombros o cadera. Aléjate un poco.'
+              : 'No se detecta el cuerpo. Mejora la luz y muestra la cintura.',
         );
       } catch (reason) {
-        failed = true;
+        retryDelay = 1500;
         if (active) {
           setTorso(null);
           setTrackingError((reason as Error).message);
+          setTracking('Reintentando detección automáticamente…');
         }
       } finally {
-        if (active && !failed) timer = setTimeout(() => void sample(), 700);
+        if (active) timer = setTimeout(() => void sample(), retryDelay);
       }
     }
     void sample();
