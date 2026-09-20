@@ -1,0 +1,41 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'bo.edu.grupo18'
+version = '0.1.0'
+
+android {
+  namespace 'bo.edu.grupo18.pose'
+}
+
+dependencies {
+  implementation 'com.google.mediapipe:tasks-vision:0.10.29'
+}
+
+// Modelo oficial fijado por versión y hash; se empaqueta en el APK, sin llamadas de red en uso.
+def modelFile = file('src/main/assets/pose_landmarker_lite.task')
+tasks.register('downloadPoseModel') {
+  outputs.file(modelFile)
+  outputs.upToDateWhen { false }
+  doLast {
+    modelFile.parentFile.mkdirs()
+    if (!modelFile.exists()) {
+      def source = new URL('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task')
+      source.withInputStream { input -> modelFile.withOutputStream { output -> output << input } }
+    }
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    modelFile.withInputStream { input ->
+      byte[] buffer = new byte[8192]
+      int count
+      while ((count = input.read(buffer)) != -1) digest.update(buffer, 0, count)
+    }
+    def hash = digest.digest().encodeHex().toString()
+    if (hash != '59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a') {
+      modelFile.delete()
+      throw new GradleException('El modelo de pose no coincide con la versión esperada.')
+    }
+  }
+}
+tasks.named('preBuild').configure { dependsOn('downloadPoseModel') }

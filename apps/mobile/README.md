@@ -1,17 +1,22 @@
 # Vestidor AR móvil
 
-Base React Native/Expo para reemplazar el avatar 3D por una experiencia de cámara. Esta primera versión incluye autenticación móvil con renovación segura, catálogo por ubicación, cámara frontal, guía de colocación y actualizaciones de inventario mediante WebSocket.
+Base React Native/Expo para reemplazar el avatar 3D por una experiencia de cámara. Incluye autenticación móvil con renovación segura, catálogo por ubicación y variante, cámara frontal y actualizaciones de inventario mediante WebSocket.
 
-La prenda mostrada sobre la cámara es todavía una guía visual: **no existe seguimiento corporal en este incremento**. El siguiente paso es integrar MediaPipe mediante un módulo nativo/development build y deformar recursos 2D de blusas y vestidos con puntos de hombros, cintura y cadera.
+Se añadió un primer seguimiento corporal experimental para Android: un módulo nativo MediaPipe analiza capturas temporales de la cámara y devuelve hombros y cadera. La superposición vectorial de blusas y vestidos se proyecta sobre esos puntos con suavizado. En Expo Go o iOS se muestra solo una guía; para ver el seguimiento hace falta una **development build Android**. Aún no son fotografías de prendas reales ni hay oclusión por brazos. La superposición aproximada no determina la talla correcta.
 
 ## Preparación
 
 1. Copia `.env.example` como `.env` y sustituye la dirección por la IP local de la computadora cuando uses un teléfono físico.
 2. Inicia API y base de datos desde la raíz del repositorio.
-3. Ejecuta `npm start` dentro de `apps/mobile`.
+3. Para probar la guía en Expo Go, ejecuta `npm start` dentro de `apps/mobile`.
+4. Para probar seguimiento en Android, instala Android Studio/SDK y una development build: `npm --prefix apps/mobile run android`. Después inicia Metro con `npm --prefix apps/mobile start -- --dev-client`.
 
 Para un teléfono físico configura temporalmente `API_HOST=0.0.0.0` en el `.env` de la raíz y permite el puerto 3018 solamente en la red privada de Windows. Mantén `127.0.0.1` cuando no estés realizando pruebas móviles.
 
-La cámara funciona en Expo Go. El seguimiento corporal nativo requerirá un development build. Para compilar localmente Android se necesita Android Studio/SDK; iOS requiere macOS y Xcode.
+El modelo oficial `pose_landmarker_lite.task` se descarga y verifica con SHA-256 durante la compilación de Android; queda dentro de la aplicación. La inferencia de imágenes se hace localmente. Cada captura se elimina de la caché tras analizarse. Para compilar localmente Android se necesita Android Studio/SDK; este incremento no ha sido validado en un teléfono físico. iOS requiere macOS/Xcode y un módulo nativo propio pendiente.
+
+La detección actual toma capturas discretas, aproximadamente una por segundo. El siguiente paso técnico es usar fotogramas en flujo continuo para lograr mayor fluidez, añadir prendas 2D autorizadas, calibrar la cámara frontal en distintos teléfonos y tratar brazos y otras oclusiones.
+
+Desde la raíz se comprueba la parte JavaScript con `npm run mobile:typecheck`, `npm run mobile:check` y `npm run mobile:pose-test`. Estas pruebas no sustituyen la compilación nativa ni la revisión visual en Android.
 
 El video de cámara debe mantenerse en el dispositivo. WebSocket transporta únicamente eventos de disponibilidad, nunca fotogramas.

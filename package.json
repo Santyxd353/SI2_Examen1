@@ -14,6 +14,7 @@
     "mobile:start": "npm --prefix apps/mobile start",
     "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
     "mobile:check": "npm --prefix apps/mobile run check",
+    "mobile:pose-test": "tsx --test apps/mobile/test/pose.test.ts",
     "test": "jest --runInBand",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

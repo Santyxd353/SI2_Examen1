@@ -1,5 +1,9 @@
 # Avance de implementación · 16 de septiembre de 2026
 
+## Incremento de realidad aumentada · 19 de septiembre de 2026
+
+La aplicación React Native incorpora un módulo nativo Android de MediaPipe Pose Landmarker para detectar hombros y cadera de capturas temporales, y superponer una silueta vectorial de blusa o vestido con suavizado. Se selecciona talla/color antes de abrir la cámara. La geometría tiene pruebas automáticas; falta la compilación y calibración en un Android físico. Expo Go muestra únicamente la guía. Se mantienen pendientes prendas gráficas autorizadas, oclusión, flujo continuo de fotogramas e iOS. Detalles en `CAMBIO_ALCANCE_AR.md` y `apps/mobile/README.md`.
+
 ## Incremento de compra web · 19 de septiembre de 2026
 
 En la rama `codex/avance-ar-sucursales` se añadió carrito persistente por cliente, pantalla «Mi carrito», pedido web con dirección libre y ubicación de origen, precio WEB vigente, control de stock de seguridad y reserva de 15 minutos. La reserva se libera al vencer o rechazar el pago de prueba; al aprobarlo se confirma el pedido y se registra la salida de inventario. Los reintentos de checkout y pago usan identificadores de idempotencia. «Mis pedidos» muestra el historial y permite solicitar devoluciones totales o parciales para revisión.

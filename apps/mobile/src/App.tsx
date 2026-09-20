@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,8 +14,12 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
+import Svg, { Polygon } from 'react-native-svg';
 import { api, login, logout, restoreSession } from './api';
 import { connectRealtime } from './realtime';
+import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
+import { garmentKind, garmentOutline, projectTorso } from './pose';
+import type { Layout, Torso } from './pose';
 import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
 
 type Page = 'catalog' | 'ar';
@@ -27,6 +31,7 @@ export function App() {
   const [catalog, setCatalog] = useState<Catalog>({ products: [], locations: [] });
   const [location, setLocation] = useState<CatalogLocation | null>(null);
   const [selection, setSelection] = useState<{ product: Product; variant: Variant } | null>(null);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
 
   async function loadCatalog(locationId = location?.id || '') {
@@ -138,7 +143,9 @@ export function App() {
           <Text style={styles.empty}>No hay prendas disponibles en esta ubicación.</Text>
         }
         renderItem={({ item }) => {
-          const variant = item.variantes[0];
+          const variant =
+            item.variantes.find((option) => option.id === selectedVariants[item.id]) ??
+            item.variantes[0];
           if (!variant) return null;
           return (
             <View style={styles.productCard}>
@@ -149,6 +156,26 @@ export function App() {
                   {variant.color} · Talla {variant.talla}
                 </Text>
                 <Text style={styles.productMeta}>{variant.disponible} disponibles</Text>
+                <View style={styles.variantChips}>
+                  {item.variantes.map((option) => (
+                    <Pressable
+                      key={option.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: option.id === variant.id }}
+                      style={[
+                        styles.variantChip,
+                        option.id === variant.id && styles.variantChipActive,
+                      ]}
+                      onPress={() =>
+                        setSelectedVariants((current) => ({ ...current, [item.id]: option.id }))
+                      }
+                    >
+                      <Text style={styles.variantText}>
+                        {option.talla} · {option.color}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
               <Pressable
                 style={styles.tryButton}
@@ -234,6 +261,67 @@ function ArCamera({
   onBack: () => void;
 }) {
   const [permission, requestPermission] = useCameraPermissions();
+  const camera = useRef<CameraView>(null);
+  const previous = useRef<Torso | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [layout, setLayout] = useState<Layout>({ width: 0, height: 0 });
+  const [torso, setTorso] = useState<Torso | null>(null);
+  const [tracking, setTracking] = useState(
+    'Colócate de frente y aléjate hasta mostrar la cintura.',
+  );
+  const [trackingError, setTrackingError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const kind = garmentKind(product.nombre);
+  const nativeAvailable = isPoseAvailable();
+
+  useEffect(() => {
+    if (
+      !permission?.granted ||
+      !cameraReady ||
+      !nativeAvailable ||
+      kind === 'unsupported' ||
+      !layout.width ||
+      !layout.height
+    )
+      return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    async function sample() {
+      let failed = false;
+      try {
+        const capture = await camera.current?.takePictureAsync({
+          quality: 0.35,
+          skipProcessing: false,
+          shutterSound: false,
+        });
+        if (!capture?.uri) return;
+        const pose = await detectPose(capture.uri);
+        if (!active) return;
+        const next = projectTorso(pose, layout, previous.current);
+        previous.current = next;
+        setTorso(next);
+        setTracking(
+          next
+            ? 'Prenda siguiendo hombros y cadera.'
+            : 'No se detectan hombros y cadera. Mejora la luz y encuadre.',
+        );
+      } catch (reason) {
+        failed = true;
+        if (active) {
+          setTorso(null);
+          setTrackingError((reason as Error).message);
+        }
+      } finally {
+        if (active && !failed) timer = setTimeout(() => void sample(), 700);
+      }
+    }
+    void sample();
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      previous.current = null;
+    };
+  }, [permission?.granted, cameraReady, nativeAvailable, kind, layout.width, layout.height, retry]);
   if (!permission)
     return (
       <SafeAreaView style={styles.loading}>
@@ -258,25 +346,51 @@ function ArCamera({
   return (
     <View style={styles.cameraPage}>
       <NativeStatusBar barStyle="light-content" />
-      <CameraView style={StyleSheet.absoluteFill} facing="front" mirror />
-      <View pointerEvents="none" style={styles.bodyGuide}>
-        <View style={styles.headGuide} />
-        <View style={styles.shoulderGuide} />
-        <View
-          style={[
-            styles.garmentPreview,
-            { backgroundColor: `${variant.color_hex || '#c9b8a7'}BB` },
-          ]}
-        >
-          <Text style={styles.garmentLabel}>{product.nombre}</Text>
-        </View>
+      <CameraView
+        ref={camera}
+        style={StyleSheet.absoluteFill}
+        facing="front"
+        mirror
+        onCameraReady={() => setCameraReady(true)}
+      />
+      <View
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+        onLayout={(event) =>
+          setLayout({
+            width: event.nativeEvent.layout.width,
+            height: event.nativeEvent.layout.height,
+          })
+        }
+      >
+        {torso && kind !== 'unsupported' ? (
+          <Svg width={layout.width} height={layout.height}>
+            <Polygon
+              points={garmentOutline(torso, kind)
+                .map((point) => `${point.x},${point.y}`)
+                .join(' ')}
+              fill={variant.color_hex || '#c9b8a7'}
+              fillOpacity={0.78}
+              stroke="#ffffffcc"
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+          </Svg>
+        ) : (
+          <View style={styles.bodyGuide}>
+            <View style={styles.headGuide} />
+            <View style={styles.shoulderGuide} />
+          </View>
+        )}
       </View>
       <View style={styles.cameraTop}>
         <Pressable style={styles.cameraAction} onPress={onBack}>
           <Text style={styles.cameraActionText}>‹ Volver</Text>
         </Pressable>
         <View style={styles.prototypeBadge}>
-          <Text style={styles.prototypeText}>BASE AR · SEGUIMIENTO PENDIENTE</Text>
+          <Text style={styles.prototypeText}>
+            {nativeAvailable ? 'AR EXPERIMENTAL · ANDROID' : 'GUÍA · REQUIERE BUILD ANDROID'}
+          </Text>
         </View>
       </View>
       <View style={styles.cameraBottom}>
@@ -284,8 +398,28 @@ function ArCamera({
         <Text style={styles.cameraMeta}>
           {variant.color} · Talla {variant.talla}
         </Text>
-        <Text style={styles.cameraHint}>Coloca hombros y cintura dentro de la guía.</Text>
-        <Text style={styles.cameraPrivacy}>El video no sale del dispositivo.</Text>
+        <Text style={styles.cameraHint}>
+          {kind === 'unsupported'
+            ? 'Esta prenda aún no tiene visualización AR. Primero se admiten blusas y vestidos.'
+            : nativeAvailable
+              ? tracking
+              : 'Para detectar el cuerpo instala la development build de Android.'}
+        </Text>
+        {!!trackingError && <Text style={styles.cameraHint}>{trackingError}</Text>}
+        {!!trackingError && nativeAvailable && (
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => {
+              setTrackingError('');
+              setRetry((value) => value + 1);
+            }}
+          >
+            <Text style={styles.primaryText}>Reintentar detección</Text>
+          </Pressable>
+        )}
+        <Text style={styles.cameraPrivacy}>
+          La cámara se procesa en el dispositivo; las capturas temporales se eliminan.
+        </Text>
       </View>
     </View>
   );
@@ -361,6 +495,10 @@ const styles = StyleSheet.create({
   productCopy: { flex: 1, gap: 4 },
   productName: { color: '#293028', fontSize: 15, fontWeight: '600' },
   productMeta: { color: '#777e73', fontSize: 10 },
+  variantChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 5 },
+  variantChip: { borderWidth: 1, borderColor: '#d4d9d0', paddingHorizontal: 6, paddingVertical: 4 },
+  variantChipActive: { borderColor: '#344032', backgroundColor: '#e8ece4' },
+  variantText: { color: '#303a2e', fontSize: 9 },
   tryButton: { backgroundColor: '#303a2e', paddingHorizontal: 13, paddingVertical: 11 },
   tryButtonText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   empty: { color: '#777e73', textAlign: 'center', padding: 30 },
@@ -478,4 +616,5 @@ const styles = StyleSheet.create({
   cameraMeta: { color: '#dce1d9', marginTop: 4 },
   cameraHint: { color: '#fff', fontSize: 11, marginTop: 12 },
   cameraPrivacy: { color: '#aeb7aa', fontSize: 9, marginTop: 5 },
+  retryButton: { alignSelf: 'flex-start', marginTop: 10, padding: 9, backgroundColor: '#344032' },
 });

@@ -4,5 +4,6 @@
     "strict": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["index.ts", "src/**/*.ts", "src/**/*.tsx", "modules/**/*.ts"],
+  "exclude": ["test", "node_modules"]
 }
