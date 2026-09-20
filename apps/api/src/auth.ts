@@ -108,7 +108,7 @@ export class AuthService {
       throw new UnauthorizedException('La sesión venció.');
     }
   }
-  private async sessionResponse(userId: string, sessionId: string, raw: string, res: Response) {
+  private async tokenResponse(userId: string, sessionId: string, raw: string) {
     const user = await this.identity(userId);
     // The refresh hash also versions access tokens: rotation invalidates the prior access token.
     const token = jwt.sign({ sid: sessionId, sv: digest(raw) }, process.env.JWT_SECRET!, {
@@ -118,8 +118,12 @@ export class AuthService {
       issuer: 'vestidor18',
       audience: 'vestidor18',
     });
-    res.cookie('refresh', raw, cookieOptions);
     return { accessToken: token, user };
+  }
+  private async sessionResponse(userId: string, sessionId: string, raw: string, res: Response) {
+    const response = await this.tokenResponse(userId, sessionId, raw);
+    res.cookie('refresh', raw, cookieOptions);
+    return response;
   }
   async issue(id: string, res: Response) {
     const sessionId = randomUUID(),
@@ -159,11 +163,30 @@ export class AuthService {
     return this.issue(u.id, res);
   }
   async login(body: unknown, res: Response) {
+    const u = await this.authenticate(body);
+    return this.issue(u.id, res);
+  }
+  private async authenticate(body: unknown) {
     const data = credentials.parse(body);
     const u = await this.db.usuario.findUnique({ where: { correo: data.correo } });
     if (!u || !(await compare(data.clave, u.clave_hash)) || u.estado !== 'ACTIVO')
       throw new UnauthorizedException('Correo o contraseña incorrectos.');
-    return this.issue(u.id, res);
+    return u;
+  }
+  async mobileLogin(body: unknown) {
+    const u = await this.authenticate(body);
+    const sessionId = randomUUID(),
+      raw = this.makeRefresh(u.id, sessionId);
+    await this.db.sesion.create({
+      data: {
+        id: sessionId,
+        usuario_id: u.id,
+        refresh_hash: digest(raw),
+        creada_en: new Date(),
+        vence_en: new Date(Date.now() + 7 * 86400000),
+      },
+    });
+    return { ...(await this.tokenResponse(u.id, sessionId, raw)), refreshToken: raw };
   }
   async refresh(raw: string | undefined, res: Response) {
     if (!raw) throw new UnauthorizedException('Inicia sesión para continuar.');
@@ -184,6 +207,27 @@ export class AuthService {
     if (changed.count !== 1) throw new UnauthorizedException('La sesión ya se renovó o se cerró.');
     return this.sessionResponse(payload.sub!, payload.sid, next, res);
   }
+  async mobileRefresh(body: unknown) {
+    const { refreshToken } = z
+      .object({ refreshToken: z.string().min(80) })
+      .strict()
+      .parse(body);
+    const payload = this.readRefresh(refreshToken);
+    await this.identity(payload.sub!);
+    const next = this.makeRefresh(payload.sub!, payload.sid);
+    const changed = await this.db.sesion.updateMany({
+      where: {
+        id: payload.sid,
+        usuario_id: payload.sub,
+        refresh_hash: digest(refreshToken),
+        revocada_en: null,
+        vence_en: { gt: new Date() },
+      },
+      data: { refresh_hash: digest(next), vence_en: new Date(Date.now() + 7 * 86400000) },
+    });
+    if (changed.count !== 1) throw new UnauthorizedException('La sesión ya se renovó o se cerró.');
+    return { ...(await this.tokenResponse(payload.sub!, payload.sid, next)), refreshToken: next };
+  }
   async logout(raw: string | undefined, res: Response) {
     if (raw) {
       let payload: jwt.JwtPayload | undefined;
@@ -200,6 +244,23 @@ export class AuthService {
         });
     }
     res.clearCookie('refresh', cookieOptions);
+    return { ok: true };
+  }
+  async mobileLogout(body: unknown) {
+    const { refreshToken } = z
+      .object({ refreshToken: z.string().min(80) })
+      .strict()
+      .parse(body);
+    let payload: jwt.JwtPayload | undefined;
+    try {
+      payload = this.readRefresh(refreshToken);
+    } catch {
+      return { ok: true };
+    }
+    await this.db.sesion.updateMany({
+      where: { id: payload.sid, usuario_id: payload.sub, revocada_en: null },
+      data: { revocada_en: new Date() },
+    });
     return { ok: true };
   }
   async verify(token: string | undefined) {
@@ -246,6 +307,15 @@ export class AuthController {
   }
   @Post('login') login(@Body() b: unknown, @Res({ passthrough: true }) r: Response) {
     return this.auth.login(b, r);
+  }
+  @Post('mobile/login') mobileLogin(@Body() b: unknown) {
+    return this.auth.mobileLogin(b);
+  }
+  @Post('mobile/refresh') mobileRefresh(@Body() b: unknown) {
+    return this.auth.mobileRefresh(b);
+  }
+  @Post('mobile/logout') mobileLogout(@Body() b: unknown) {
+    return this.auth.mobileLogout(b);
   }
   @Post('refresh') refresh(@Req() r: Request, @Res({ passthrough: true }) s: Response) {
     return this.auth.refresh(r.cookies?.refresh, s);

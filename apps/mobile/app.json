@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Vestidor AR",
+    "slug": "vestidor-ar-grupo18",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "vestidor18",
+    "android": {
+      "package": "bo.edu.grupo18.vestidorar"
+    },
+    "ios": {
+      "bundleIdentifier": "bo.edu.grupo18.vestidorar",
+      "supportsTablet": true
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Vestidor AR usa la cámara para colocar prendas sobre tu imagen. El video no se almacena."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Permite que Vestidor AR acceda de forma segura a tu sesión."
+        }
+      ]
+    ]
+  }
+}

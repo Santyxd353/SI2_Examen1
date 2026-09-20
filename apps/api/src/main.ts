@@ -4,7 +4,9 @@ import { AvatarJobs } from './avatar-jobs';
 async function main() {
   const app = await createApp();
   app.get(AvatarJobs).start();
-  await app.listen(Number(process.env.API_PORT || 3018), '127.0.0.1');
-  console.log('API Grupo 18: http://localhost:3018');
+  const port = Number(process.env.API_PORT || 3018);
+  const host = process.env.API_HOST || '127.0.0.1';
+  await app.listen(port, host);
+  console.log(`API Grupo 18: http://${host}:${port}`);
 }
 void main();

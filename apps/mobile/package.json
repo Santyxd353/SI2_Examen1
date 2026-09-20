@@ -1,0 +1,29 @@
+{
+  "name": "vestidor18-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "check": "expo install --check"
+  },
+  "dependencies": {
+    "expo": "~57.0.23",
+    "expo-camera": "~57.0.5",
+    "expo-secure-store": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "socket.io-client": "4.8.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.4",
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
+  }
+}

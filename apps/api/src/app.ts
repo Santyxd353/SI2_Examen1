@@ -11,6 +11,10 @@ import { CatalogController } from './catalog';
 import { AvatarsController } from './avatars';
 import { FittingController } from './fitting';
 import { AvatarJobs } from './avatar-jobs';
+import { LocationsController, StaffController } from './locations';
+import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
+import { SalesController } from './sales';
+import { RealtimeGateway } from './realtime';
 import { ApiErrors } from './errors';
 import { storedPath, ensureStorage } from './storage';
 @Controller('health')
@@ -26,8 +30,13 @@ class HealthController {
     CatalogController,
     AvatarsController,
     FittingController,
+    LocationsController,
+    StaffController,
+    ReportsController,
+    AnalyticsController,
+    SalesController,
   ],
-  providers: [Db, AuthService, AuthGuard, AvatarJobs],
+  providers: [Db, AuthService, AuthGuard, AvatarJobs, CommercialAnalytics, RealtimeGateway],
 })
 class AppModule {}
 export async function createApp() {

@@ -18,6 +18,22 @@ import {
 } from 'lucide-react';
 import { api, privateModel, refresh, setToken, logoutSession } from './api';
 import { Viewer } from './Viewer';
+import { Admin } from './Admin';
+import { Reports } from './Reports';
+import { Sales } from './Sales';
+type CatalogLocation = {
+  id: string;
+  nombre: string;
+  tipo: 'TIENDA' | 'ALMACEN';
+  direccion?: string;
+};
+type LocationAvailability = {
+  id: string;
+  nombre: string;
+  tipo: 'TIENDA' | 'ALMACEN';
+  direccion?: string;
+  disponible: number;
+};
 type Variant = {
   id: string;
   talla: string;
@@ -25,6 +41,7 @@ type Variant = {
   color_hex: string;
   precio: number;
   disponible: number;
+  ubicaciones: LocationAvailability[];
   modeloId?: string;
   plantillaId?: string;
 };
@@ -79,12 +96,16 @@ function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
 export function App() {
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
-  const [page, setPage] = useState<'catalogo' | 'avatar'>('catalogo'),
+  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'reports' | 'sales'>(
+      'catalogo',
+    ),
     [user, setUser] = useState<any>(null),
     [authOpen, setAuthOpen] = useState(false),
     [register, setRegister] = useState(false);
   const [products, setProducts] = useState<Product[]>([]),
     [selected, setSelected] = useState<Variant | null>(null),
+    [catalogLocations, setCatalogLocations] = useState<CatalogLocation[]>([]),
+    [catalogLocation, setCatalogLocation] = useState(''),
     [query, setQuery] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -95,6 +116,18 @@ export function App() {
   const [current, setCurrent] = useState<Avatar | null>(null),
     [session, setSession] = useState<string | null>(null),
     [notice, setNotice] = useState('');
+  async function loadCatalog(locationId = '') {
+    const data = await api(`/catalog${locationId ? `?location=${locationId}` : ''}`);
+    const normalized = data.products.map((p: Product) => ({
+      ...p,
+      variantes: [...p.variantes].sort(
+        (a, b) => ['S', 'M', 'L'].indexOf(a.talla) - ['S', 'M', 'L'].indexOf(b.talla),
+      ),
+    }));
+    setProducts(normalized);
+    setCatalogLocations(data.locations || []);
+    setSelected(normalized[0]?.variantes[1] || normalized[0]?.variantes[0] || null);
+  }
   useEffect(() => {
     const epoch = accountEpoch.current;
     refresh()
@@ -102,19 +135,7 @@ export function App() {
         if (epoch === accountEpoch.current) setUser(d.user);
       })
       .catch(() => {});
-    api('/catalog')
-      .then((d) => {
-        setProducts(
-          d.products.map((p: Product) => ({
-            ...p,
-            variantes: [...p.variantes].sort(
-              (a, b) => ['S', 'M', 'L'].indexOf(a.talla) - ['S', 'M', 'L'].indexOf(b.talla),
-            ),
-          })),
-        );
-        setSelected(d.products[0]?.variantes[1] || null);
-      })
-      .catch((e) => setError(e.message));
+    void loadCatalog().catch((e) => setError(e.message));
   }, []);
   const reload = async () => {
     const epoch = accountEpoch.current;
@@ -389,6 +410,24 @@ export function App() {
           <button className={page === 'avatar' ? 'active' : ''} onClick={openAvatar}>
             Mi avatar
           </button>
+          {user?.permissions?.includes('inventario:consultar') && (
+            <button className={page === 'admin' ? 'active' : ''} onClick={() => setPage('admin')}>
+              Inventario
+            </button>
+          )}
+          {user?.permissions?.includes('reportes:consultar') && (
+            <button
+              className={page === 'reports' ? 'active' : ''}
+              onClick={() => setPage('reports')}
+            >
+              Reportes
+            </button>
+          )}
+          {user?.permissions?.includes('ventas:registrar') && (
+            <button className={page === 'sales' ? 'active' : ''} onClick={() => setPage('sales')}>
+              Vender
+            </button>
+          )}
         </nav>
         <div className="account">
           {user ? (
@@ -413,7 +452,15 @@ export function App() {
       <main id="contenido">
         <div className="breadcrumbs">
           Inicio <ChevronRight size={12} />{' '}
-          {page === 'catalogo' ? 'Colección / Esenciales' : 'Tu espacio / Mi avatar'}
+          {page === 'catalogo'
+            ? 'Colección / Esenciales'
+            : page === 'avatar'
+              ? 'Tu espacio / Mi avatar'
+              : page === 'admin'
+                ? 'Administración / Sucursales y almacenes'
+                : page === 'reports'
+                  ? 'Analítica / Reportes comerciales'
+                  : 'Operaciones / Registrar venta'}
         </div>
         {error && !authOpen && (
           <div className="message error" role="alert">
@@ -498,15 +545,35 @@ export function App() {
                     Esenciales para todos los días<span> ({products.length})</span>
                   </h2>
                 </div>
-                <label className="search">
-                  <Search size={17} />
-                  <input
-                    aria-label="Buscar prendas"
-                    placeholder="Buscar en la colección"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </label>
+                <div className="catalog-filters">
+                  <label className="location-filter">
+                    <span>Disponibilidad</span>
+                    <select
+                      value={catalogLocation}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setCatalogLocation(value);
+                        void loadCatalog(value).catch((reason) => setError(reason.message));
+                      }}
+                    >
+                      <option value="">Todas las sucursales y almacenes</option>
+                      {catalogLocations.map((location) => (
+                        <option value={location.id} key={location.id}>
+                          {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'} · {location.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="search">
+                    <Search size={17} />
+                    <input
+                      aria-label="Buscar prendas"
+                      placeholder="Buscar en la colección"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </label>
+                </div>
               </div>
               <div className="product-grid">
                 {filtered.map((p, i) => {
@@ -563,6 +630,23 @@ export function App() {
                       <small className="stock">
                         {v?.disponible} disponibles · precio de desarrollo
                       </small>
+                      {v?.ubicaciones?.length ? (
+                        <div className="location-stock" aria-label="Disponibilidad por ubicación">
+                          {v.ubicaciones.map((location) => (
+                            <span key={location.id}>
+                              <b>
+                                {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'}{' '}
+                                {location.nombre}
+                              </b>
+                              {location.disponible} u.
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <small className="location-empty">
+                          Sin existencias en sucursales o almacenes.
+                        </small>
+                      )}
                     </article>
                   );
                 })}
@@ -593,6 +677,12 @@ export function App() {
               ))}
             </section>
           </>
+        ) : page === 'admin' ? (
+          <Admin products={products} permissions={user?.permissions || []} />
+        ) : page === 'reports' ? (
+          <Reports />
+        ) : page === 'sales' ? (
+          <Sales />
         ) : (
           <section className="avatar-page">
             <div className="section-title">

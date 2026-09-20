@@ -11,23 +11,41 @@ export async function seed(client: PrismaClient = db) {
       update: {},
       create: { nombre, descripcion: nombre, protegido: true },
     });
-  const admin = await client.rol.findUniqueOrThrow({ where: { nombre: 'Administrador' } });
-  for (const [recurso, accion] of [
-    ['catalogo', 'gestionar'],
-    ['usuarios', 'gestionar'],
-    ['inventario', 'gestionar'],
-    ['modelos', 'gestionar'],
-  ]) {
-    const perm = await client.permiso.upsert({
-      where: { recurso_accion: { recurso, accion } },
-      update: {},
-      create: { recurso, accion, descripcion: recurso + ' ' + accion },
-    });
-    await client.rol_permiso.upsert({
-      where: { rol_id_permiso_id: { rol_id: admin.id, permiso_id: perm.id } },
-      update: {},
-      create: { rol_id: admin.id, permiso_id: perm.id },
-    });
+  const grants: Record<string, [string, string][]> = {
+    Administrador: [
+      ['catalogo', 'gestionar'],
+      ['usuarios', 'gestionar'],
+      ['ubicaciones', 'gestionar'],
+      ['inventario', 'consultar'],
+      ['inventario', 'gestionar'],
+      ['ventas', 'registrar'],
+      ['reportes', 'consultar'],
+      ['modelos', 'gestionar'],
+    ],
+    Vendedor: [
+      ['inventario', 'consultar'],
+      ['inventario', 'gestionar'],
+      ['ventas', 'registrar'],
+    ],
+    Analista: [
+      ['inventario', 'consultar'],
+      ['reportes', 'consultar'],
+    ],
+  };
+  for (const [roleName, permissions] of Object.entries(grants)) {
+    const role = await client.rol.findUniqueOrThrow({ where: { nombre: roleName } });
+    for (const [recurso, accion] of permissions) {
+      const perm = await client.permiso.upsert({
+        where: { recurso_accion: { recurso, accion } },
+        update: {},
+        create: { recurso, accion, descripcion: recurso + ' ' + accion },
+      });
+      await client.rol_permiso.upsert({
+        where: { rol_id_permiso_id: { rol_id: role.id, permiso_id: perm.id } },
+        update: {},
+        create: { rol_id: role.id, permiso_id: perm.id },
+      });
+    }
   }
   const category = await client.categoria.upsert({
     where: { nombre: 'Esenciales' },

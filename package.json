@@ -11,16 +11,22 @@
     "build:api": "tsc -p apps/api/tsconfig.json",
     "build:web": "tsc -p apps/web/tsconfig.json && vite build --config apps/web/vite.config.ts",
     "build": "npm run build:api && npm run build:web",
+    "mobile:start": "npm --prefix apps/mobile start",
+    "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
+    "mobile:check": "npm --prefix apps/mobile run check",
     "test": "jest --runInBand",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
-    "db:prepare-test": "tsx scripts/prepare-test.ts"
+    "db:prepare-test": "tsx scripts/prepare-test.ts",
+    "user:grant-admin": "tsx scripts/grant-admin.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.5",
     "@nestjs/core": "11.2.5",
     "@nestjs/platform-express": "11.2.5",
+    "@nestjs/platform-socket.io": "^11.2.5",
+    "@nestjs/websockets": "^11.2.5",
     "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -35,6 +41,8 @@
     "react-dom": "^19.2.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "three": "^0.183.0",
     "zod": "^4.1.0"
   },

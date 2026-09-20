@@ -21,6 +21,18 @@ Desde PowerShell, dentro de esta carpeta:
 
 Abre **http://localhost:5173**. Elige **Iniciar sesión → ¿Primera vez? Crea tu cuenta**. No hay contraseñas compartidas ni usuarios administradores predeterminados.
 
+Para habilitar de forma local la primera cuenta administradora, registra una cuenta normal y ejecuta:
+
+```powershell
+npm run user:grant-admin -- correo@ejemplo.com
+```
+
+La siguiente sesión mostrará **Inventario**, desde donde se crean, editan y desactivan sucursales o almacenes; se asignan vendedores o analistas a una o varias ubicaciones; se consulta el detalle físico, reservado, comprometido y disponible; se realizan conteos y conciliaciones; se configuran mínimos con alertas; se ajustan y transfieren existencias; y se consulta el historial. El catálogo muestra las unidades disponibles y permite filtrar las prendas por sucursal o almacén.
+
+Los roles Administrador y Analista también ven **Reportes**. El panel resume ventas confirmadas por período, ubicación, producto y vendedor, además del inventario y sus alertas. Desde allí se puede ejecutar una proyección local de demanda, detectar valores semanales atípicos, obtener propuestas de reposición o traslado y formular consultas de solo lectura. Los resultados se guardan con la versión del modelo y explican los datos utilizados; son estimaciones estadísticas, no garantías de ventas futuras.
+
+Los roles Administrador y Vendedor ven **Vender**. La pantalla permite seleccionar una ubicación autorizada, agregar varias prendas, indicar cliente y método de pago, y confirmar una venta de mostrador. La operación crea pedido, detalle y pago confirmado, descuenta el stock y registra el movimiento en una sola transacción. Los métodos Efectivo, Tarjeta y QR son registros internos de esta versión local; todavía no ejecutan cobros en una pasarela bancaria.
+
 Puedes explorar el catálogo y girar el maniquí de referencia sin una cuenta. Para enviar las tres fotos, entra a **Mi avatar**, declara tu altura y acepta el consentimiento. Los resultados pasan a revisión antes de poder usarse en el vestidor. Si las imágenes no superan la validación, se muestra el fallo y se purgan las fotos.
 
 **Estado del generador:** hay un proceso real MediaPipe/OpenCV → geometría paramétrica → Blender → GLB. Se han probado cálculos, exportación y rechazo/purga de entradas inválidas. Falta validar el recorrido satisfactorio y la calidad corporal con tres fotografías reales autorizadas; tampoco está terminado el ajuste de las prendas a distintos cuerpos. El maniquí inicial es una referencia identificada en pantalla.
@@ -57,16 +69,25 @@ Los scripts actuales usan los puertos locales **55418 / 3018 / 5173**. Una conex
 
 ## Estructura y stack
 
-| Carpeta          | Responsabilidad                                                             |
-| ---------------- | --------------------------------------------------------------------------- |
-| `apps/api`       | NestJS + TypeScript: autenticación, permisos, catálogo, avatares y vestidor |
-| `apps/web`       | React + TypeScript + Three.js: colección, captura, revisión y visor         |
-| `prisma`         | PostgreSQL, migración de las 49 tablas documentadas y cliente Prisma        |
-| `workers/avatar` | Python, MediaPipe, OpenCV y exportación Blender a GLB                       |
-| `scripts`        | Preparación, arranque, semilla y verificación de navegador                  |
-| `docs`           | Línea base aprobada, avance y evidencia de pruebas                          |
+| Carpeta          | Responsabilidad                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `apps/api`       | NestJS + TypeScript: autenticación, permisos, catálogo, inventario, reportes, analítica, avatares y vestidor |
+| `apps/web`       | React + TypeScript + Three.js: colección, inventario, reportes, captura, revisión y visor                    |
+| `apps/mobile`    | React Native/Expo: sesión móvil, catálogo, cámara, base AR y WebSocket                                       |
+| `prisma`         | PostgreSQL, migración de las 49 tablas documentadas y cliente Prisma                                         |
+| `workers/avatar` | Python, MediaPipe, OpenCV y exportación Blender a GLB                                                        |
+| `scripts`        | Preparación, arranque, semilla y verificación de navegador                                                   |
+| `docs`           | Línea base aprobada, avance y evidencia de pruebas                                                           |
 
-La aplicación Android con React Native/WebView sigue prevista por el documento y está pendiente de implementar.
+Existe una primera base Android/iOS en `apps/mobile`: React Native con Expo, sesión móvil renovable en almacenamiento seguro, catálogo por ubicación, cámara frontal, guía visual AR y actualización de inventario por WebSocket. Todavía no incluye detección corporal ni deformación de prendas; la superposición actual está identificada como prototipo.
+
+Para iniciar Metro y abrir la base móvil con Expo Go:
+
+```powershell
+npm run mobile:start
+```
+
+En un teléfono físico, copia `apps/mobile/.env.example` como `.env` y usa la IP local de la computadora en `EXPO_PUBLIC_API_URL`. La API debe ser accesible desde la misma red. La futura integración nativa de MediaPipe necesitará un development build; compilar Android localmente requiere Android Studio/SDK y compilar iOS requiere macOS con Xcode.
 
 ## Verificación
 
@@ -74,6 +95,8 @@ Con la base local y los recursos de referencia preparados:
 
 ```powershell
 npm run build
+npm run mobile:typecheck
+npm run mobile:check
 npm run db:prepare-test
 npm test
 ./workers/avatar/.venv/Scripts/python.exe -m pytest workers/avatar/tests -q
