@@ -8,7 +8,11 @@
     "newArchEnabled": true,
     "scheme": "vestidor18",
     "android": {
-      "package": "bo.edu.grupo18.vestidorar"
+      "package": "bo.edu.grupo18.vestidorar",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "ios": {
       "bundleIdentifier": "bo.edu.grupo18.vestidorar",
@@ -28,6 +32,11 @@
           "faceIDPermission": "Permite que Vestidor AR acceda de forma segura a tu sesión."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7c19e805-6e75-4fa0-a31b-6111b812e1da"
+      }
+    }
   }
 }
