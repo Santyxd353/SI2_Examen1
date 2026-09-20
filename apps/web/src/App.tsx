@@ -14,6 +14,7 @@ import {
   LoaderCircle,
   Search,
   Shirt,
+  ShoppingBag,
   Trash2,
 } from 'lucide-react';
 import { api, privateModel, refresh, setToken, logoutSession } from './api';
@@ -21,6 +22,7 @@ import { Viewer } from './Viewer';
 import { Admin } from './Admin';
 import { Reports } from './Reports';
 import { Sales } from './Sales';
+import { Commerce } from './Commerce';
 type CatalogLocation = {
   id: string;
   nombre: string;
@@ -96,9 +98,9 @@ function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
 export function App() {
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
-  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'reports' | 'sales'>(
-      'catalogo',
-    ),
+  const [page, setPage] = useState<
+      'catalogo' | 'avatar' | 'admin' | 'reports' | 'sales' | 'commerce'
+    >('catalogo'),
     [user, setUser] = useState<any>(null),
     [authOpen, setAuthOpen] = useState(false),
     [register, setRegister] = useState(false);
@@ -197,6 +199,30 @@ export function App() {
     if (!user) setAuthOpen(true);
     setNotice('');
   };
+  async function addToCart(variant: Variant) {
+    if (!user) {
+      setAuthOpen(true);
+      setNotice('Inicia sesión para guardar prendas en tu carrito.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const cart = await api('/commerce/cart');
+      const current = cart.item_carrito.find(
+        (item: { variante_id: string }) => item.variante_id === variant.id,
+      );
+      await api('/commerce/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ variantId: variant.id, quantity: (current?.cantidad ?? 0) + 1 }),
+      });
+      setNotice('Prenda agregada al carrito.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function authenticate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -410,6 +436,14 @@ export function App() {
           <button className={page === 'avatar' ? 'active' : ''} onClick={openAvatar}>
             Mi avatar
           </button>
+          {user && (
+            <button
+              className={page === 'commerce' ? 'active' : ''}
+              onClick={() => setPage('commerce')}
+            >
+              <ShoppingBag size={16} /> Mi carrito
+            </button>
+          )}
           {user?.permissions?.includes('inventario:consultar') && (
             <button className={page === 'admin' ? 'active' : ''} onClick={() => setPage('admin')}>
               Inventario
@@ -458,9 +492,11 @@ export function App() {
               ? 'Tu espacio / Mi avatar'
               : page === 'admin'
                 ? 'Administración / Sucursales y almacenes'
-                : page === 'reports'
-                  ? 'Analítica / Reportes comerciales'
-                  : 'Operaciones / Registrar venta'}
+                : page === 'commerce'
+                  ? 'Tienda / Carrito y pedidos'
+                  : page === 'reports'
+                    ? 'Analítica / Reportes comerciales'
+                    : 'Operaciones / Registrar venta'}
         </div>
         {error && !authOpen && (
           <div className="message error" role="alert">
@@ -630,6 +666,13 @@ export function App() {
                       <small className="stock">
                         {v?.disponible} disponibles · precio de desarrollo
                       </small>
+                      <button
+                        className="cart-add"
+                        disabled={busy || !v || v.disponible < 1}
+                        onClick={() => v && void addToCart(v)}
+                      >
+                        <ShoppingBag size={16} /> Agregar al carrito
+                      </button>
                       {v?.ubicaciones?.length ? (
                         <div className="location-stock" aria-label="Disponibilidad por ubicación">
                           {v.ubicaciones.map((location) => (
@@ -683,6 +726,11 @@ export function App() {
           <Reports />
         ) : page === 'sales' ? (
           <Sales />
+        ) : page === 'commerce' ? (
+          <Commerce
+            locations={catalogLocations}
+            onInventoryChanged={() => loadCatalog(catalogLocation)}
+          />
         ) : (
           <section className="avatar-page">
             <div className="section-title">

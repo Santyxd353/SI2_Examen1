@@ -12,6 +12,13 @@ export class ApiErrors implements ExceptionFilter {
       });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
       return res.status(409).json({ message: 'Ya existe un registro con esos datos.' });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034')
+      return res
+        .status(409)
+        .json({
+          message:
+            'El inventario cambió durante la compra. Actualiza el carrito e intenta nuevamente.',
+        });
     if (error instanceof HttpException)
       return res.status(error.getStatus()).json({ message: error.message });
     console.error('Error de operación:', error instanceof Error ? error.name : 'desconocido');

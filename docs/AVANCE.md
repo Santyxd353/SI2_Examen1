@@ -1,5 +1,11 @@
 # Avance de implementación · 16 de septiembre de 2026
 
+## Incremento de compra web · 19 de septiembre de 2026
+
+En la rama `codex/avance-ar-sucursales` se añadió carrito persistente por cliente, pantalla «Mi carrito», pedido web con dirección libre y ubicación de origen, precio WEB vigente, control de stock de seguridad y reserva de 15 minutos. La reserva se libera al vencer o rechazar el pago de prueba; al aprobarlo se confirma el pedido y se registra la salida de inventario. Los reintentos de checkout y pago usan identificadores de idempotencia. «Mis pedidos» muestra el historial y permite solicitar devoluciones totales o parciales para revisión.
+
+El pago es **simulado y explícito**: no integra ni cobra mediante una pasarela externa. La devolución solo llega al estado `SOLICITADA`; aún faltan revisión administrativa, reintegro condicionado del stock y reembolso. También faltan preparación, despacho y entrega del pedido, dirección estructurada y reglas comerciales configurables. Por eso CU09 y CU14 siguen abiertos.
+
 ## Alcance de esta entrega
 
 Se inició el ciclo 1 con una aplicación local persistente centrada en el vestidor. La migración contiene las **49 tablas del documento**; disponer de una tabla no significa haber implementado su función. El documento aprobado y sus pruebas de aceptación se mantienen como línea base en `linea-base.json`.

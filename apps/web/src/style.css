@@ -1907,3 +1907,129 @@ footer > span:last-child {
   outline: 2px solid #c0693f;
   outline-offset: 3px;
 }
+.cart-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #1f342b;
+  border-radius: 7px;
+  background: #1f342b;
+  color: white;
+  cursor: pointer;
+}
+.cart-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.commerce-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+}
+.commerce-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.commerce-panel {
+  padding: 1.5rem;
+  border: 1px solid #dedbd3;
+  border-radius: 12px;
+  background: #fff;
+}
+.commerce-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.2rem;
+}
+.commerce-panel label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  font-weight: 600;
+}
+.commerce-panel select,
+.commerce-panel textarea,
+.commerce-line input {
+  padding: 0.65rem;
+  border: 1px solid #c9c8bf;
+  border-radius: 6px;
+  background: #fff;
+  color: #222;
+  font: inherit;
+}
+.commerce-panel textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+.commerce-line {
+  display: grid;
+  grid-template-columns: 1fr 5rem auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #e9e7e1;
+}
+.commerce-line div,
+.commerce-order {
+  display: grid;
+  gap: 0.25rem;
+}
+.commerce-line small,
+.commerce-order small {
+  color: #666;
+}
+.commerce-line input {
+  width: 100%;
+}
+.commerce-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+}
+.commerce-order {
+  padding: 1rem 0;
+  border-bottom: 1px solid #e9e7e1;
+}
+.commerce-order > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.commerce-order ul {
+  margin: 0.4rem 0;
+  padding-left: 1.3rem;
+}
+.commerce-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.commerce-actions button {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #1f342b;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+  color: #1f342b;
+}
+.commerce-actions button:first-child {
+  background: #1f342b;
+  color: #fff;
+}
+@media (max-width: 760px) {
+  .commerce-grid {
+    grid-template-columns: 1fr;
+  }
+  .commerce-line {
+    grid-template-columns: 1fr 4rem;
+  }
+  .commerce-line strong {
+    grid-column: 1 / -1;
+  }
+}
