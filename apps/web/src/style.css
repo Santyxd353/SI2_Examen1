@@ -1005,6 +1005,36 @@ h1 em {
   text-transform: none;
   letter-spacing: 0;
 }
+.admin-page > .admin-card {
+  margin-top: 24px;
+}
+.ar-resource-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+.ar-resource-row img {
+  width: 72px;
+  height: 86px;
+  object-fit: contain;
+  background: #e8ebe3;
+}
+.ar-resource-row > div {
+  flex: 1;
+}
+.ar-resource-row p {
+  margin: 5px 0 0;
+  color: #697266;
+}
+.ar-resource-row button {
+  border: 1px solid #7d8b76;
+  background: white;
+  color: #344032;
+  padding: 9px 14px;
+  cursor: pointer;
+}
 .two-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;

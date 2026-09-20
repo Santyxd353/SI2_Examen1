@@ -686,11 +686,14 @@ model recurso_catalogo {
   texto_alternativo String    @db.VarChar(255)
   embedding         Json?
   licencia          String    @db.VarChar(255)
+  uso               String    @default("GALERIA") @db.VarChar(20)
+  estado            String    @default("BORRADOR") @db.VarChar(20)
   producto          producto  @relation(fields: [producto_id], references: [id], onUpdate: NoAction, map: "fk_recurso_catalogo_producto_id")
   variante          variante? @relation(fields: [variante_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_recurso_catalogo_variante_id")
 
   @@index([producto_id], map: "ix_recurso_catalogo_producto_id")
   @@index([variante_id], map: "ix_recurso_catalogo_variante_id")
+  @@index([variante_id, uso, estado], map: "ix_recurso_catalogo_variante_uso_estado")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

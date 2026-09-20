@@ -22,6 +22,7 @@ export type Variant = {
   precio: number;
   disponible: number;
   ubicaciones: LocationAvailability[];
+  arImagePath?: string | null;
 };
 
 export type Product = {

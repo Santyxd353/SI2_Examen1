@@ -16,7 +16,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Polygon } from 'react-native-svg';
-import { api, login, logout, restoreSession } from './api';
+import { API_URL, api, login, logout, restoreSession } from './api';
 import { connectRealtime } from './realtime';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
 import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
@@ -272,9 +272,14 @@ function ArCamera({
   );
   const [trackingError, setTrackingError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
   const kind = garmentKind(product.nombre);
   const nativeAvailable = isPoseAvailable();
+  const arImageUrl = variant.arImagePath
+    ? `${API_URL.replace(/\/api$/, '')}${variant.arImagePath}`
+    : null;
   const illustrativeSample =
+    !arImageUrl &&
     product.id === '20000000-0000-4000-8000-000000000001' &&
     variant.color.toLowerCase() === 'marfil';
 
@@ -283,7 +288,7 @@ function ArCamera({
       !permission?.granted ||
       !cameraReady ||
       !nativeAvailable ||
-      kind === 'unsupported' ||
+      (kind === 'unsupported' && !arImageUrl) ||
       !layout.width ||
       !layout.height
     )
@@ -329,7 +334,16 @@ function ArCamera({
       clearTimeout(timer);
       previous.current = null;
     };
-  }, [permission?.granted, cameraReady, nativeAvailable, kind, layout.width, layout.height, retry]);
+  }, [
+    permission?.granted,
+    cameraReady,
+    nativeAvailable,
+    kind,
+    arImageUrl,
+    layout.width,
+    layout.height,
+    retry,
+  ]);
   if (!permission)
     return (
       <SafeAreaView style={styles.loading}>
@@ -371,7 +385,14 @@ function ArCamera({
           })
         }
       >
-        {torso && illustrativeSample ? (
+        {torso && arImageUrl && !imageFailed ? (
+          <Image
+            source={{ uri: arImageUrl }}
+            resizeMode="stretch"
+            style={[styles.garmentImage, garmentImageFrame(torso)]}
+            onError={() => setImageFailed(true)}
+          />
+        ) : torso && illustrativeSample ? (
           <Image
             source={require('../assets/camiseta-marfil-muestra.png')}
             resizeMode="stretch"
@@ -413,13 +434,18 @@ function ArCamera({
           {variant.color} · Talla {variant.talla}
         </Text>
         <Text style={styles.cameraHint}>
-          {kind === 'unsupported'
+          {kind === 'unsupported' && !arImageUrl
             ? 'Esta prenda aún no tiene visualización AR. Primero se admiten blusas y vestidos.'
             : nativeAvailable
               ? tracking
               : 'Para detectar el cuerpo instala la development build de Android.'}
         </Text>
         {!!trackingError && <Text style={styles.cameraHint}>{trackingError}</Text>}
+        {imageFailed && (
+          <Text style={styles.cameraHint}>
+            No se pudo cargar la imagen AR. Revisa la conexión con el servidor.
+          </Text>
+        )}
         {!!trackingError && nativeAvailable && (
           <Pressable
             style={styles.retryButton}

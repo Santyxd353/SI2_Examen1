@@ -4,7 +4,9 @@ Base React Native/Expo para reemplazar el avatar 3D por una experiencia de cáma
 
 Se añadió un primer seguimiento corporal experimental para Android: un módulo nativo MediaPipe analiza capturas temporales de la cámara y devuelve hombros y cadera. La superposición vectorial de blusas y vestidos se proyecta sobre esos puntos con suavizado. En Expo Go o iOS se muestra solo una guía; para ver el seguimiento hace falta una **development build Android**. Aún no son fotografías de prendas reales ni hay oclusión por brazos. La superposición aproximada no determina la talla correcta.
 
-La variante Marfil de «Camiseta esencial» incluye una imagen PNG transparente generada como muestra ilustrativa. Se ancla a hombros y cadera para probar la superposición de una prenda visual. No representa la foto del producto vendido ni simula el ajuste real de las tallas; las demás variantes mantienen la silueta vectorial hasta contar con imágenes propias autorizadas.
+La variante Marfil de «Camiseta esencial» incluye una imagen PNG transparente generada como muestra ilustrativa. Se ancla a hombros y cadera para probar la superposición de una prenda visual. No representa la foto del producto vendido ni simula el ajuste real de las tallas.
+
+Un administrador con permiso `catalogo:gestionar` puede cargar desde el panel web una imagen frontal PNG transparente por talla y color. La imagen queda en borrador hasta pulsar «Publicar». La API entrega entonces su ruta en `arImagePath` y la app móvil la usa en la cámara para esa variante. Al publicar una nueva imagen para la misma variante, la anterior pasa a borrador. Las variantes sin imagen publicada muestran la silueta vectorial; la muestra Marfil permanece solo como ejemplo cuando no hay imagen propia publicada.
 
 ## Preparación
 

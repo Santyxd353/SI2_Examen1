@@ -117,6 +117,10 @@ CREATE TABLE recurso_catalogo (
   texto_alternativo varchar(255) NOT NULL,
   embedding jsonb,
   licencia varchar(255) NOT NULL,
+  uso varchar(20) NOT NULL DEFAULT 'GALERIA',
+  estado varchar(20) NOT NULL DEFAULT 'BORRADOR',
+  CHECK (uso IN ('GALERIA', 'AR')),
+  CHECK (estado IN ('BORRADOR', 'PUBLICADO')),
   CHECK (orden >= 0)
 );
 
@@ -710,6 +714,10 @@ CREATE INDEX ix_recurso_catalogo_producto_id ON recurso_catalogo (producto_id);
 ALTER TABLE recurso_catalogo ADD CONSTRAINT fk_recurso_catalogo_variante_id FOREIGN KEY (variante_id) REFERENCES variante (id) ON DELETE RESTRICT;
 
 CREATE INDEX ix_recurso_catalogo_variante_id ON recurso_catalogo (variante_id);
+
+CREATE INDEX ix_recurso_catalogo_variante_uso_estado ON recurso_catalogo (variante_id, uso, estado);
+
+CREATE UNIQUE INDEX ux_recurso_catalogo_ar_publicado_variante ON recurso_catalogo (variante_id) WHERE uso = 'AR' AND estado = 'PUBLICADO';
 
 ALTER TABLE precio_canal ADD CONSTRAINT fk_precio_canal_variante_id FOREIGN KEY (variante_id) REFERENCES variante (id) ON DELETE RESTRICT;
 

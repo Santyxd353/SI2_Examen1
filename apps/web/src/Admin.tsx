@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   Building2,
   History,
+  ImagePlus,
   PackagePlus,
   Pencil,
   Power,
@@ -68,6 +69,17 @@ type StockAlert = {
   disponible: number;
   stock_seguridad: number;
 };
+type ArResource = {
+  id: string;
+  varianteId: string;
+  producto: string;
+  talla: string;
+  color: string;
+  estado: 'BORRADOR' | 'PUBLICADO';
+  textoAlternativo: string;
+  licencia: string;
+  imagePath: string;
+};
 
 export function Admin({ products, permissions }: { products: Product[]; permissions: string[] }) {
   const [locations, setLocations] = useState<Location[]>([]);
@@ -85,9 +97,11 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [countingRow, setCountingRow] = useState<InventoryRow | null>(null);
   const [thresholdRow, setThresholdRow] = useState<InventoryRow | null>(null);
+  const [arResources, setArResources] = useState<ArResource[]>([]);
   const managesLocations = permissions.includes('ubicaciones:gestionar');
   const managesUsers = permissions.includes('usuarios:gestionar');
   const managesInventory = permissions.includes('inventario:gestionar');
+  const managesCatalog = permissions.includes('catalogo:gestionar');
   const variants = useMemo(
     () =>
       products.flatMap((product) =>
@@ -97,14 +111,57 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
   );
 
   async function reload() {
-    const [locationData, staffData, alertData] = await Promise.all([
+    const [locationData, staffData, alertData, arData] = await Promise.all([
       api('/locations'),
       managesUsers ? api('/staff') : Promise.resolve([]),
       api('/locations/inventory/alerts'),
+      managesCatalog ? api('/catalog/ar-resources') : Promise.resolve([]),
     ]);
     setLocations(locationData);
     setStaff(staffData);
     setAlerts(alertData);
+    setArResources(arData);
+  }
+
+  async function uploadArImage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await api('/catalog/ar-resources', { method: 'POST', body: new FormData(form) });
+      form.reset();
+      setArResources(await api('/catalog/ar-resources'));
+      setMessage('Imagen AR cargada como borrador. Revísala y publícala para mostrarla en la app.');
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setArImageStatus(resource: ArResource) {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const estado = resource.estado === 'PUBLICADO' ? 'BORRADOR' : 'PUBLICADO';
+      await api(`/catalog/ar-resources/${resource.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado }),
+      });
+      setArResources(await api('/catalog/ar-resources'));
+      setMessage(
+        estado === 'PUBLICADO'
+          ? 'Imagen AR publicada en el catálogo.'
+          : 'Imagen AR retirada del catálogo.',
+      );
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function showInventory(location: Location) {
@@ -349,6 +406,54 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
         </div>
       )}
       <div className="admin-grid">
+        {managesCatalog && (
+          <form className="admin-card" onSubmit={(event) => void uploadArImage(event)}>
+            <ImagePlus size={24} />
+            <h2>Nueva imagen para prueba AR</h2>
+            <p>
+              Sube la imagen frontal de la prenda con fondo transparente. Se vincula a una talla y
+              color específicos.
+            </p>
+            <label>
+              Prenda y variante
+              <select name="varianteId" required>
+                <option value="">Seleccionar</option>
+                {variants.map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {variant.producto} · {variant.talla} · {variant.color}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Imagen PNG transparente (256–2048 px, máximo 5 MB)
+              <input name="imagen" type="file" accept="image/png" required />
+            </label>
+            <label>
+              Descripción de la imagen
+              <input
+                name="textoAlternativo"
+                minLength={5}
+                maxLength={255}
+                required
+                placeholder="Blusa marfil vista de frente"
+              />
+            </label>
+            <label>
+              Licencia o autorización de uso
+              <input
+                name="licencia"
+                minLength={3}
+                maxLength={255}
+                required
+                placeholder="Fotografía propia"
+              />
+            </label>
+            <button className="primary" disabled={busy || variants.length === 0}>
+              Cargar borrador AR
+            </button>
+          </form>
+        )}
         {managesLocations && (
           <form
             className="admin-card"
@@ -563,6 +668,28 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
           </form>
         )}
       </div>
+      {managesCatalog && (
+        <section className="admin-card" aria-label="Imágenes AR cargadas">
+          <h2>Imágenes de prueba AR</h2>
+          {arResources.length === 0 && <p>Todavía no hay imágenes AR cargadas.</p>}
+          {arResources.map((resource) => (
+            <div key={resource.id} className="ar-resource-row">
+              <img src={resource.imagePath} alt={resource.textoAlternativo} />
+              <div>
+                <strong>
+                  {resource.producto} · {resource.talla} · {resource.color}
+                </strong>
+                <p>
+                  {resource.estado === 'PUBLICADO' ? 'Publicada' : 'Borrador'} · {resource.licencia}
+                </p>
+              </div>
+              <button type="button" disabled={busy} onClick={() => void setArImageStatus(resource)}>
+                {resource.estado === 'PUBLICADO' ? 'Retirar' : 'Publicar'}
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
       <div className="location-list">
         <h2>Ubicaciones registradas</h2>
         {locations.map((location) => (

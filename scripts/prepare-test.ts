@@ -9,8 +9,24 @@ async function main() {
   const client = new Client({ connectionString: url.toString() });
   await client.connect();
   const exists = await client.query("SELECT to_regclass('public.usuario') AS name");
-  if (!exists.rows[0].name)
+  if (!exists.rows[0].name) {
     await client.query(readFileSync('prisma/documented-schema.sql', 'utf8'));
+  } else {
+    const arColumns = await client.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_name='recurso_catalogo' AND column_name='uso'",
+    );
+    if (!arColumns.rowCount)
+      await client.query(
+        readFileSync('prisma/migrations/20260920000000_recursos_ar_catalogo/migration.sql', 'utf8'),
+      );
+    const arUnique = await client.query(
+      "SELECT to_regclass('public.ux_recurso_catalogo_ar_publicado_variante') AS name",
+    );
+    if (!arUnique.rows[0].name)
+      await client.query(
+        readFileSync('prisma/migrations/20260920010000_ar_publicado_unico/migration.sql', 'utf8'),
+      );
+  }
   await client.end();
   const db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   await seed(db);
