@@ -27,10 +27,16 @@ async function main() {
         readFileSync('prisma/migrations/20260920010000_ar_publicado_unico/migration.sql', 'utf8'),
       );
   }
-  await client.end();
   const db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   await seed(db);
   await db.$disconnect();
+  await client.query(
+    readFileSync(
+      'prisma/migrations/20260920020000_catalogo_comun_ubicaciones/migration.sql',
+      'utf8',
+    ),
+  );
+  await client.end();
 }
 main().catch((e) => {
   console.error(e.message);

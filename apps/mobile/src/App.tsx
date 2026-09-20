@@ -29,16 +29,38 @@ export function App() {
   const [user, setUser] = useState<Identity | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState<Page>('catalog');
-  const [catalog, setCatalog] = useState<Catalog>({ products: [], locations: [] });
+  const [catalog, setCatalog] = useState<Catalog>({
+    products: [],
+    locations: [],
+    filters: { brands: [], colors: [], sizes: [] },
+  });
   const [location, setLocation] = useState<CatalogLocation | null>(null);
+  const [brand, setBrand] = useState('');
+  const [color, setColor] = useState('');
+  const [size, setSize] = useState('');
+  const [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({});
+  const catalogRequest = useRef(0);
   const [selection, setSelection] = useState<{ product: Product; variant: Variant } | null>(null);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   async function loadCatalog(locationId = location?.id || '') {
-    const data = await api(`/catalog${locationId ? `?location=${locationId}` : ''}`);
-    setCatalog(data);
-    if (!location && data.locations[0]) setLocation(data.locations[0]);
+    const requestId = ++catalogRequest.current;
+    const params = new URLSearchParams();
+    if (locationId) params.set('location', locationId);
+    if (brand) params.set('brand', brand);
+    if (color) params.set('color', color);
+    if (size) params.set('size', size);
+    setCatalogLoading(true);
+    try {
+      const data = await api(`/catalog${params.size ? `?${params}` : ''}`);
+      if (requestId !== catalogRequest.current) return;
+      setCatalog(data);
+      if (!location && data.locations[0]) setLocation(data.locations[0]);
+    } finally {
+      if (requestId === catalogRequest.current) setCatalogLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -57,7 +79,7 @@ export function App() {
     return connectRealtime(location.id, () => {
       void loadCatalog(location.id).catch(() => {});
     });
-  }, [user, location?.id]);
+  }, [user, location?.id, brand, color, size]);
 
   if (loading)
     return (
@@ -112,7 +134,7 @@ export function App() {
         </Pressable>
       </View>
       <FlatList
-        data={catalog.products}
+        data={catalogLoading ? [] : catalog.products}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
@@ -137,22 +159,90 @@ export function App() {
                 </Pressable>
               ))}
             </View>
+            <FilterRow
+              label="Marca"
+              options={catalog.filters?.brands || []}
+              value={brand}
+              onChange={setBrand}
+            />
+            <FilterRow
+              label="Color"
+              options={catalog.filters?.colors || []}
+              value={color}
+              onChange={setColor}
+            />
+            <FilterRow
+              label="Talla"
+              options={catalog.filters?.sizes || []}
+              value={size}
+              onChange={setSize}
+            />
+            {(brand || color || size) && (
+              <Pressable
+                onPress={() => {
+                  setBrand('');
+                  setColor('');
+                  setSize('');
+                }}
+              >
+                <Text style={styles.link}>Limpiar filtros</Text>
+              </Pressable>
+            )}
             {!!error && <Text style={styles.error}>{error}</Text>}
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>No hay prendas disponibles en esta ubicación.</Text>
+          catalogLoading ? (
+            <ActivityIndicator color="#697b5e" />
+          ) : (
+            <Text style={styles.empty}>
+              No hay prendas para esa combinación de sucursal, marca, color y talla.
+            </Text>
+          )
         }
         renderItem={({ item }) => {
           const variant =
             item.variantes.find((option) => option.id === selectedVariants[item.id]) ??
             item.variantes[0];
           if (!variant) return null;
+          const images = item.imagenes || [];
+          const activeImage = images[galleryIndex[item.id] || 0] || images[0];
           return (
             <View style={styles.productCard}>
-              <View style={[styles.swatch, { backgroundColor: variant.color_hex || '#c9b8a7' }]} />
+              {activeImage ? (
+                <Image
+                  source={{ uri: `${API_URL.replace(/\/api$/, '')}${activeImage.url}` }}
+                  accessibilityLabel={activeImage.textoAlternativo}
+                  style={styles.catalogImage}
+                />
+              ) : (
+                <View
+                  style={[styles.swatch, { backgroundColor: variant.color_hex || '#c9b8a7' }]}
+                />
+              )}
               <View style={styles.productCopy}>
                 <Text style={styles.productName}>{item.nombre}</Text>
+                <Text style={styles.productMeta}>{item.marca || 'Sin marca'}</Text>
+                {images.length > 1 && (
+                  <View style={styles.photoChoices}>
+                    {images.map((image, index) => (
+                      <Pressable
+                        key={image.url}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ver foto ${index + 1} de ${item.nombre}`}
+                        style={[
+                          styles.photoChoice,
+                          activeImage?.url === image.url && styles.photoChoiceActive,
+                        ]}
+                        onPress={() =>
+                          setGalleryIndex((current) => ({ ...current, [item.id]: index }))
+                        }
+                      >
+                        <Text style={styles.photoChoiceText}>{index + 1}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
                 <Text style={styles.productMeta}>
                   {variant.color} · Talla {variant.talla}
                 </Text>
@@ -192,6 +282,39 @@ export function App() {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+function FilterRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <View>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.chips}>
+        {['', ...options].map((option) => (
+          <Pressable
+            key={option || 'all'}
+            accessibilityRole="button"
+            accessibilityState={{ selected: value === option }}
+            style={[styles.chip, value === option && styles.chipActive]}
+            onPress={() => onChange(option)}
+          >
+            <Text style={value === option ? styles.chipTextActive : styles.chipText}>
+              {option || 'Todas'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -538,6 +661,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   swatch: { width: 58, height: 70, borderRadius: 3 },
+  catalogImage: { width: 70, height: 86, resizeMode: 'cover', backgroundColor: '#e8ebe3' },
+  photoChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  photoChoice: { borderWidth: 1, borderColor: '#cbd0c5', paddingHorizontal: 6, paddingVertical: 3 },
+  photoChoiceActive: { borderColor: '#344032', backgroundColor: '#e8ece4' },
+  photoChoiceText: { color: '#303a2e', fontSize: 9 },
   productCopy: { flex: 1, gap: 4 },
   productName: { color: '#293028', fontSize: 15, fontWeight: '600' },
   productMeta: { color: '#777e73', fontSize: 10 },

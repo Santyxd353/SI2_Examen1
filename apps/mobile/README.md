@@ -1,6 +1,6 @@
 # Vestidor AR móvil
 
-Base React Native/Expo para reemplazar el avatar 3D por una experiencia de cámara. Incluye autenticación móvil con renovación segura, catálogo por ubicación y variante, cámara frontal y actualizaciones de inventario mediante WebSocket.
+Base React Native/Expo para reemplazar el avatar 3D por una experiencia de cámara. Incluye autenticación móvil con renovación segura, catálogo por ubicación y variante, filtros combinables de marca/color/talla, galería de fotos por prenda, cámara frontal y actualizaciones de inventario mediante WebSocket. Las fotos de catálogo no se usan automáticamente como recursos AR.
 
 Se añadió un primer seguimiento corporal experimental para Android: un módulo nativo MediaPipe analiza capturas temporales de la cámara y devuelve hombros y cadera. La superposición vectorial de blusas y vestidos se proyecta sobre esos puntos con suavizado. En Expo Go o iOS se muestra solo una guía; para ver el seguimiento hace falta una **development build Android**. Aún no son fotografías de prendas reales ni hay oclusión por brazos. La superposición aproximada no determina la talla correcta.
 

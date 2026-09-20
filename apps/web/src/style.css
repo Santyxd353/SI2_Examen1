@@ -368,6 +368,7 @@ h1 em {
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
+  flex-wrap: wrap;
   margin-bottom: 26px;
 }
 .section-title h2 {
@@ -397,9 +398,11 @@ h1 em {
   width: 180px;
 }
 .catalog-filters {
-  display: flex;
-  align-items: flex-end;
-  gap: 22px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(125px, 1fr));
+  align-items: end;
+  gap: 14px;
+  flex: 1 1 610px;
 }
 .location-filter {
   display: grid;
@@ -412,13 +415,51 @@ h1 em {
   text-transform: uppercase;
 }
 .location-filter select {
-  min-width: 230px;
+  width: 100%;
   border: 0;
   border-bottom: 1px solid #cdd0c4;
   background: transparent;
   padding: 0 24px 10px 0;
   color: #41483f;
   font: inherit;
+}
+.catalog-filters .search {
+  grid-column: span 3;
+}
+.clear-catalog-filters {
+  border: 0;
+  background: transparent;
+  color: #344032;
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: left;
+  padding: 8px 0;
+}
+.catalog-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalog-thumbnails {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+}
+.catalog-thumbnails button {
+  width: 42px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid #ccd1c6;
+  background: #fff;
+  cursor: pointer;
+}
+.catalog-thumbnails button.active {
+  border: 2px solid #344032;
+}
+.catalog-thumbnails img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .product-grid {
   display: grid;
@@ -995,7 +1036,8 @@ h1 em {
   letter-spacing: 0.05em;
 }
 .admin-card input,
-.admin-card select {
+.admin-card select,
+.admin-card textarea {
   width: 100%;
   border: 1px solid #cdd1c5;
   background: white;
@@ -1004,6 +1046,21 @@ h1 em {
   font: inherit;
   text-transform: none;
   letter-spacing: 0;
+}
+.garment-create-card {
+  grid-column: 1 / -1;
+}
+.garment-create-card h3 {
+  margin: 4px 0 0;
+}
+.garment-variant-row {
+  display: grid;
+  grid-template-columns: 100px minmax(140px, 1fr) 100px auto;
+  align-items: end;
+  gap: 10px;
+}
+.garment-variant-row button {
+  min-height: 38px;
 }
 .admin-page > .admin-card {
   margin-top: 24px;
@@ -1866,6 +1923,16 @@ footer > span:last-child {
     width: 100%;
     align-items: stretch;
     flex-direction: column;
+  }
+  .catalog-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .catalog-filters .search {
+    grid-column: 1 / -1;
+  }
+  .garment-variant-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .location-filter select {
     width: 100%;

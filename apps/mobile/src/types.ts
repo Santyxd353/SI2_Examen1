@@ -30,6 +30,8 @@ export type Product = {
   nombre: string;
   descripcion: string;
   material: string;
+  marca?: string | null;
+  imagenes?: { url: string; textoAlternativo: string }[];
   variantes: Variant[];
 };
 
@@ -39,4 +41,8 @@ export type CatalogLocation = {
   tipo: 'TIENDA' | 'ALMACEN';
 };
 
-export type Catalog = { products: Product[]; locations: CatalogLocation[] };
+export type Catalog = {
+  products: Product[];
+  locations: CatalogLocation[];
+  filters: { brands: string[]; colors: string[]; sizes: string[] };
+};

@@ -1,5 +1,11 @@
 # Avance de implementación · 16 de septiembre de 2026
 
+## Catálogo compartido y filtros del cliente · 20 de septiembre de 2026
+
+El administrador puede crear un tipo de prenda, asignarle marca, nombre, material, descripción, precio y una o varias combinaciones de talla/color, y subir de una a ocho fotos para su galería. La prenda se publica en el catálogo de todas las sucursales y almacenes con existencias iniciales en cero; después se agrega o ajusta stock por ubicación. Las ubicaciones nuevas heredan el surtido publicado, sin copiar las cantidades de otras sucursales. Las fotos de galería son distintas de los recursos PNG para la prueba AR.
+
+El cliente puede combinar sucursal, marca, color y talla en web y Android. El filtro de color y talla se aplica a la misma variante, y la ficha muestra disponibilidad por ubicación incluso cuando es cero. La API solo expone productos y fotos publicados. El alta de prendas requiere `catalogo:gestionar`; el ajuste de stock conserva su permiso y alcance por ubicación.
+
 ## Incremento de realidad aumentada · 19 de septiembre de 2026
 
 La aplicación React Native incorpora un módulo nativo Android de MediaPipe Pose Landmarker para detectar hombros y cadera de capturas temporales, y superponer una silueta vectorial de blusa o vestido con suavizado. Se selecciona talla/color antes de abrir la cámara. La geometría tiene pruebas automáticas; falta la compilación y calibración en un Android físico. Expo Go muestra únicamente la guía. Se mantienen pendientes prendas gráficas autorizadas, oclusión, flujo continuo de fotogramas e iOS. Detalles en `CAMBIO_ALCANCE_AR.md` y `apps/mobile/README.md`.

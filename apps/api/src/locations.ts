@@ -20,6 +20,8 @@ import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest, Identity, requirePermission } from './auth';
 import { Db } from './db';
+import { assignAssortment } from './assortment';
+import { RealtimeGateway } from './realtime';
 
 const locationInput = z
   .object({
@@ -60,7 +62,10 @@ export async function requireLocationScope(db: Db, user: Identity, locationId: s
 @Controller('locations')
 @UseGuards(AuthGuard)
 export class LocationsController {
-  constructor(@Inject(Db) private db: Db) {}
+  constructor(
+    @Inject(Db) private db: Db,
+    @Inject(RealtimeGateway) private realtime: RealtimeGateway,
+  ) {}
 
   @Get()
   async list(@Req() req: AuthRequest) {
@@ -91,14 +96,26 @@ export class LocationsController {
       const parent = await this.db.ubicacion.findUnique({ where: { id: data.padreId } });
       if (!parent?.activa) throw new BadRequestException('La ubicación superior no está activa.');
     }
-    return this.db.ubicacion.create({
-      data: {
-        nombre: data.nombre,
-        tipo: data.tipo,
-        direccion: data.direccion,
-        padre_id: data.padreId,
-        activa: true,
-      },
+    return this.db.$transaction(async (tx) => {
+      const location = await tx.ubicacion.create({
+        data: {
+          nombre: data.nombre,
+          tipo: data.tipo,
+          direccion: data.direccion,
+          padre_id: data.padreId,
+          activa: true,
+        },
+      });
+      const variants = await tx.variante.findMany({
+        where: { activa: true, producto: { estado: 'PUBLICADO' } },
+        select: { id: true },
+      });
+      await assignAssortment(
+        tx,
+        variants.map((variant) => variant.id),
+        [location.id],
+      );
+      return location;
     });
   }
 
@@ -147,15 +164,29 @@ export class LocationsController {
       if (children)
         throw new BadRequestException('Desactiva o reasigna primero las ubicaciones dependientes.');
     }
-    return this.db.ubicacion.update({
-      where: { id },
-      data: {
-        nombre: data.nombre,
-        tipo: data.tipo,
-        direccion: data.direccion,
-        padre_id: data.padreId,
-        activa: data.activa,
-      },
+    return this.db.$transaction(async (tx) => {
+      const location = await tx.ubicacion.update({
+        where: { id },
+        data: {
+          nombre: data.nombre,
+          tipo: data.tipo,
+          direccion: data.direccion,
+          padre_id: data.padreId,
+          activa: data.activa,
+        },
+      });
+      if (data.activa === true && !found.activa) {
+        const variants = await tx.variante.findMany({
+          where: { activa: true, producto: { estado: 'PUBLICADO' } },
+          select: { id: true },
+        });
+        await assignAssortment(
+          tx,
+          variants.map((variant) => variant.id),
+          [id],
+        );
+      }
+      return location;
     });
   }
 
@@ -182,7 +213,7 @@ export class LocationsController {
         ...row,
         stockSeguridad: policy?.stock_seguridad ?? 0,
         plazoReposicionDias: policy?.plazo_reposicion_dias ?? 0,
-        alertaStock: available <= (policy?.stock_seguridad ?? 0),
+        alertaStock: (policy?.stock_seguridad ?? 0) > 0 && available <= policy!.stock_seguridad,
       };
     });
   }
@@ -219,7 +250,7 @@ export class LocationsController {
       JOIN producto p ON p.id=v.producto_id
       JOIN disponibilidad_canal d ON d.ubicacion_id=i.ubicacion_id
         AND d.variante_id=i.variante_id AND d.canal='WEB' AND d.habilitada
-      WHERE u.activa AND i.disponible <= d.stock_seguridad ${scope}
+      WHERE u.activa AND d.stock_seguridad > 0 AND i.disponible <= d.stock_seguridad ${scope}
       ORDER BY (d.stock_seguridad-i.disponible) DESC,u.nombre,p.nombre,v.sku`;
   }
 
@@ -526,7 +557,7 @@ export class LocationsController {
       this.db.variante.findFirst({ where: { id: data.varianteId, activa: true } }),
     ]);
     if (!location || !variant) throw new NotFoundException('Ubicación o variante no encontrada.');
-    return this.db.$transaction(async (tx) => {
+    const updated = await this.db.$transaction(async (tx) => {
       let inventory = await tx.inventario.findUnique({
         where: { variante_id_ubicacion_id: { variante_id: data.varianteId, ubicacion_id: id } },
       });
@@ -576,6 +607,11 @@ export class LocationsController {
       });
       return inventory;
     });
+    this.realtime.inventoryChanged(id, {
+      variantIds: [data.varianteId],
+      reason: 'stock-adjustment',
+    });
+    return updated;
   }
 
   @Post(':id/assignments')

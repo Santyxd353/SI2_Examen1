@@ -11,10 +11,11 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
@@ -22,20 +23,99 @@ import { z } from 'zod';
 import { Db } from './db';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { removeStored, storedPath } from './storage';
+import { assignAssortment } from './assortment';
+import { RealtimeGateway } from './realtime';
+
+const garmentInput = z
+  .object({
+    nombre: z.string().trim().min(2).max(160),
+    descripcion: z.string().trim().min(10).max(3000),
+    material: z.string().trim().min(2).max(150),
+    marca: z.string().trim().min(2).max(100),
+    tipoPrenda: z.string().trim().min(2).max(80),
+    precio: z.coerce.number().positive().max(1000000),
+    licencia: z.string().trim().min(3).max(255),
+    variantes: z.string(),
+  })
+  .strict();
+const variantsInput = z
+  .array(
+    z
+      .object({
+        talla: z.string().trim().min(1).max(20),
+        color: z.string().trim().min(2).max(50),
+        colorHex: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
+      })
+      .strict(),
+  )
+  .min(1)
+  .max(30);
+
+function galleryMime(file: Express.Multer.File) {
+  const bytes = file.buffer;
+  if (
+    file.mimetype === 'image/png' &&
+    bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  )
+    return { mime: 'image/png', extension: 'png' };
+  if (file.mimetype === 'image/jpeg' && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)
+    return { mime: 'image/jpeg', extension: 'jpg' };
+  if (
+    file.mimetype === 'image/webp' &&
+    bytes.toString('ascii', 0, 4) === 'RIFF' &&
+    bytes.toString('ascii', 8, 12) === 'WEBP'
+  )
+    return { mime: 'image/webp', extension: 'webp' };
+  throw new BadRequestException('Las fotos deben ser PNG, JPEG o WebP válidos.');
+}
 @Controller('catalog')
 export class CatalogController {
-  constructor(@Inject(Db) private db: Db) {}
+  constructor(
+    @Inject(Db) private db: Db,
+    @Inject(RealtimeGateway) private realtime: RealtimeGateway,
+  ) {}
   @Get()
   async list(
     @Query('search') search = '',
     @Query('category') category = '',
     @Query('location') location = '',
+    @Query('brand') brand = '',
+    @Query('color') color = '',
+    @Query('size') size = '',
   ) {
     const locationId = z.string().uuid().safeParse(location).success ? location : null;
+    const brandFilter = brand.trim().slice(0, 100);
+    const colorFilter = color.trim().slice(0, 50);
+    const sizeFilter = size.trim().slice(0, 20);
+    const sizeOrder = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const compareSizes = (a: string, b: string) => {
+      const left = sizeOrder.indexOf(a.toUpperCase());
+      const right = sizeOrder.indexOf(b.toUpperCase());
+      return (left < 0 ? 999 : left) - (right < 0 ? 999 : right) || a.localeCompare(b, 'es');
+    };
     const products = await this.db.producto.findMany({
       where: {
         estado: 'PUBLICADO',
         nombre: { contains: search.slice(0, 100), mode: 'insensitive' },
+        ...(brandFilter ? { marca: { equals: brandFilter, mode: 'insensitive' as const } } : {}),
+        ...(colorFilter || sizeFilter
+          ? {
+              variante: {
+                some: {
+                  activa: true,
+                  ...(colorFilter
+                    ? { color: { equals: colorFilter, mode: 'insensitive' as const } }
+                    : {}),
+                  ...(sizeFilter
+                    ? { talla: { equals: sizeFilter, mode: 'insensitive' as const } }
+                    : {}),
+                },
+              },
+            }
+          : {}),
         ...(z.string().uuid().safeParse(category).success ? { categoria_id: category } : {}),
       },
       orderBy: { creado_en: 'asc' },
@@ -44,15 +124,37 @@ export class CatalogController {
     const result = [];
     for (const p of products) {
       const variants = await this.db.variante.findMany({
-        where: { producto_id: p.id, activa: true },
+        where: {
+          producto_id: p.id,
+          activa: true,
+          ...(colorFilter ? { color: { equals: colorFilter, mode: 'insensitive' } } : {}),
+          ...(sizeFilter ? { talla: { equals: sizeFilter, mode: 'insensitive' } } : {}),
+        },
         orderBy: { sku: 'asc' },
       });
       const disponibles = [];
+      const gallery = await this.db.recurso_catalogo.findMany({
+        where: { producto_id: p.id, variante_id: null, uso: 'GALERIA', estado: 'PUBLICADO' },
+        orderBy: { orden: 'asc' },
+        select: { clave_objeto: true, texto_alternativo: true },
+      });
       const arResources = await this.db.recurso_catalogo.findMany({
         where: { producto_id: p.id, uso: 'AR', estado: 'PUBLICADO', variante_id: { not: null } },
         select: { variante_id: true, clave_objeto: true },
       });
       for (const v of variants) {
+        const policy = locationId
+          ? await this.db.disponibilidad_canal.findUnique({
+              where: {
+                variante_id_ubicacion_id_canal: {
+                  variante_id: v.id,
+                  ubicacion_id: locationId,
+                  canal: 'WEB',
+                },
+              },
+            })
+          : null;
+        if (locationId && !policy?.habilitada) continue;
         const now = new Date();
         const price = await this.db.precio_canal.findFirst({
           where: {
@@ -79,10 +181,11 @@ export class CatalogController {
                 direccion: string | null;
                 disponible: number;
               }[]
-            >`SELECT u.id,u.nombre,u.tipo,u.direccion,GREATEST(i.disponible,0)::int AS disponible
+            >`SELECT u.id,u.nombre,u.tipo,u.direccion,GREATEST(i.disponible-d.stock_seguridad,0)::int AS disponible
               FROM inventario i JOIN ubicacion u ON u.id=i.ubicacion_id
+              JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id
               WHERE i.variante_id=${v.id}::uuid AND i.ubicacion_id=${locationId}::uuid
-                AND u.activa AND i.disponible > 0
+                AND u.activa AND d.canal='WEB' AND d.habilitada
               ORDER BY CASE u.tipo WHEN 'TIENDA' THEN 0 ELSE 1 END,u.nombre`
           : await this.db.$queryRaw<
               {
@@ -92,16 +195,17 @@ export class CatalogController {
                 direccion: string | null;
                 disponible: number;
               }[]
-            >`SELECT u.id,u.nombre,u.tipo,u.direccion,GREATEST(i.disponible,0)::int AS disponible
+            >`SELECT u.id,u.nombre,u.tipo,u.direccion,GREATEST(i.disponible-d.stock_seguridad,0)::int AS disponible
               FROM inventario i JOIN ubicacion u ON u.id=i.ubicacion_id
-              WHERE i.variante_id=${v.id}::uuid AND u.activa AND i.disponible > 0
+              JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id
+              WHERE i.variante_id=${v.id}::uuid AND u.activa AND d.canal='WEB' AND d.habilitada
               ORDER BY CASE u.tipo WHEN 'TIENDA' THEN 0 ELSE 1 END,u.nombre`;
         const model = await this.db.modelo_prenda.findFirst({
           where: { variante_id: v.id, estado: 'PUBLICADO' },
           orderBy: { version: 'desc' },
         });
         const arResource = arResources.find((resource) => resource.variante_id === v.id);
-        if (price && (!locationId || stock[0].available > 0))
+        if (price)
           disponibles.push({
             ...v,
             precio: Number(price.importe) * (1 - Number(price.descuento_pct) / 100),
@@ -115,10 +219,45 @@ export class CatalogController {
               : null,
           });
       }
-      if (!locationId || disponibles.length) result.push({ ...p, variantes: disponibles });
+      if (
+        disponibles.length ||
+        (!locationId && !brandFilter && !colorFilter && !sizeFilter && !search)
+      )
+        result.push({
+          ...p,
+          imagenes: gallery.map((image) => ({
+            url: `/assets/${image.clave_objeto.replace(/^public\//, '')}`,
+            textoAlternativo: image.texto_alternativo,
+          })),
+          variantes: disponibles.sort(
+            (a, b) => compareSizes(a.talla, b.talla) || a.color.localeCompare(b.color, 'es'),
+          ),
+        });
     }
+    const filterProducts = await this.db.producto.findMany({
+      where: { estado: 'PUBLICADO' },
+      select: {
+        marca: true,
+        variante: { where: { activa: true }, select: { color: true, talla: true } },
+      },
+    });
+    const sorted = (values: string[]) =>
+      [...new Set(values)].sort((a, b) => a.localeCompare(b, 'es'));
     return {
       products: result,
+      filters: {
+        brands: sorted(
+          filterProducts
+            .map((product) => product.marca)
+            .filter((value): value is string => !!value),
+        ),
+        colors: sorted(
+          filterProducts.flatMap((product) => product.variante.map((variant) => variant.color)),
+        ),
+        sizes: sorted(
+          filterProducts.flatMap((product) => product.variante.map((variant) => variant.talla)),
+        ).sort(compareSizes),
+      },
       categories: await this.db.categoria.findMany({ where: { activa: true } }),
       locations: await this.db.ubicacion.findMany({
         where: { activa: true, inventario: { some: {} } },
@@ -127,6 +266,143 @@ export class CatalogController {
       }),
     };
   }
+
+  @Post('garments')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(
+    FilesInterceptor('fotos', 8, {
+      storage: memoryStorage(),
+      limits: { files: 8, fileSize: 5 * 1024 * 1024, fields: 8 },
+    }),
+  )
+  async createGarment(
+    @Req() r: AuthRequest,
+    @Body() body: unknown,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    requirePermission(r.user, 'catalogo:gestionar');
+    const data = garmentInput.parse(body);
+    let variants: z.infer<typeof variantsInput>;
+    try {
+      variants = variantsInput.parse(JSON.parse(data.variantes));
+    } catch {
+      throw new BadRequestException('Añade al menos una combinación válida de talla y color.');
+    }
+    const combinations = variants.map(
+      (variant) => `${variant.talla.toLowerCase()}|${variant.color.toLowerCase()}`,
+    );
+    if (new Set(combinations).size !== combinations.length)
+      throw new BadRequestException('No repitas la misma talla y color en una prenda.');
+    if (!files?.length) throw new BadRequestException('Adjunta al menos una foto de la prenda.');
+    const photos = files.map((file) => {
+      if (file.size < 100) throw new BadRequestException('Una de las fotos está vacía.');
+      return { file, ...galleryMime(file), key: '' };
+    });
+    await mkdir(storedPath('public/catalog-gallery'), { recursive: true });
+    const written: string[] = [];
+    let created: {
+      id: string;
+      nombre: string;
+      variantes: string[];
+      ubicaciones: string[];
+      fotos: number;
+    };
+    try {
+      for (const photo of photos) {
+        photo.key = `public/catalog-gallery/${randomUUID()}.${photo.extension}`;
+        await writeFile(storedPath(photo.key), photo.file.buffer, { flag: 'wx' });
+        written.push(photo.key);
+      }
+      created = await this.db.$transaction(async (tx) => {
+        const existingCategory = await tx.categoria.findFirst({
+          where: { nombre: { equals: data.tipoPrenda, mode: 'insensitive' } },
+        });
+        const category =
+          existingCategory ??
+          (await tx.categoria.create({
+            data: {
+              nombre: data.tipoPrenda,
+              descripcion: 'Tipo de prenda del catálogo',
+              activa: true,
+            },
+          }));
+        const product = await tx.producto.create({
+          data: {
+            categoria_id: category.id,
+            nombre: data.nombre,
+            descripcion: data.descripcion,
+            material: data.material,
+            marca: data.marca,
+            estado: 'PUBLICADO',
+            creado_en: new Date(),
+          },
+        });
+        const createdVariants = [];
+        const now = new Date();
+        for (const [index, variant] of variants.entries()) {
+          const created = await tx.variante.create({
+            data: {
+              producto_id: product.id,
+              sku: `G18-${randomUUID().replace(/-/g, '').slice(0, 16)}-${index + 1}`,
+              talla: variant.talla,
+              color: variant.color,
+              color_hex: variant.colorHex,
+              activa: true,
+            },
+          });
+          createdVariants.push(created);
+          await tx.precio_canal.createMany({
+            data: (['WEB', 'APP'] as const).map((canal) => ({
+              variante_id: created.id,
+              canal,
+              moneda: 'BOB',
+              importe: data.precio,
+              descuento_pct: 0,
+              desde: now,
+            })),
+          });
+        }
+        const locations = await tx.ubicacion.findMany({
+          where: { activa: true },
+          select: { id: true },
+        });
+        await assignAssortment(
+          tx,
+          createdVariants.map((variant) => variant.id),
+          locations.map((location) => location.id),
+        );
+        await tx.recurso_catalogo.createMany({
+          data: photos.map((photo, index) => ({
+            producto_id: product.id,
+            clave_objeto: photo.key,
+            tipo_mime: photo.mime,
+            orden: index,
+            texto_alternativo: `${data.nombre}, vista ${index + 1}`,
+            licencia: data.licencia,
+            uso: 'GALERIA',
+            estado: 'PUBLICADO',
+          })),
+        });
+        return {
+          id: product.id,
+          nombre: product.nombre,
+          variantes: createdVariants.map((variant) => variant.id),
+          ubicaciones: locations.map((location) => location.id),
+          fotos: photos.length,
+        };
+      });
+    } catch (error) {
+      await Promise.all(written.map((key) => removeStored(key)));
+      throw error;
+    }
+    for (const locationId of created.ubicaciones)
+      this.realtime.inventoryChanged(locationId, {
+        variantIds: created.variantes,
+        reason: 'catalog-new-product',
+      });
+    return { ...created, ubicaciones: created.ubicaciones.length };
+  }
+
   @Get('ar-resources')
   @UseGuards(AuthGuard)
   async arResources(@Req() r: AuthRequest) {

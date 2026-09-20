@@ -52,8 +52,12 @@ type Product = {
   nombre: string;
   descripcion: string;
   material: string;
+  marca?: string | null;
+  imagenes?: { url: string; textoAlternativo: string }[];
   variantes: Variant[];
 };
+type CatalogFilters = { brands: string[]; colors: string[]; sizes: string[] };
+type CatalogCategory = { id: string; nombre: string };
 type Avatar = {
   id: string;
   estado: string;
@@ -105,10 +109,23 @@ export function App() {
     [authOpen, setAuthOpen] = useState(false),
     [register, setRegister] = useState(false);
   const [products, setProducts] = useState<Product[]>([]),
+    [visibleProducts, setVisibleProducts] = useState<Product[]>([]),
     [selected, setSelected] = useState<Variant | null>(null),
     [catalogLocations, setCatalogLocations] = useState<CatalogLocation[]>([]),
+    [categories, setCategories] = useState<CatalogCategory[]>([]),
+    [filterOptions, setFilterOptions] = useState<CatalogFilters>({
+      brands: [],
+      colors: [],
+      sizes: [],
+    }),
     [catalogLocation, setCatalogLocation] = useState(''),
     [query, setQuery] = useState(''),
+    [brand, setBrand] = useState(''),
+    [color, setColor] = useState(''),
+    [size, setSize] = useState(''),
+    [catalogVersion, setCatalogVersion] = useState(0),
+    [catalogLoading, setCatalogLoading] = useState(true),
+    [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({}),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   const [avatars, setAvatars] = useState<Avatar[]>([]),
@@ -118,18 +135,46 @@ export function App() {
   const [current, setCurrent] = useState<Avatar | null>(null),
     [session, setSession] = useState<string | null>(null),
     [notice, setNotice] = useState('');
-  async function loadCatalog(locationId = '') {
-    const data = await api(`/catalog${locationId ? `?location=${locationId}` : ''}`);
-    const normalized = data.products.map((p: Product) => ({
-      ...p,
-      variantes: [...p.variantes].sort(
-        (a, b) => ['S', 'M', 'L'].indexOf(a.talla) - ['S', 'M', 'L'].indexOf(b.talla),
-      ),
-    }));
+  async function loadCatalog() {
+    const data = await api('/catalog');
+    const normalized: Product[] = data.products;
     setProducts(normalized);
     setCatalogLocations(data.locations || []);
+    setCategories(data.categories || []);
+    setFilterOptions(data.filters || { brands: [], colors: [], sizes: [] });
     setSelected(normalized[0]?.variantes[1] || normalized[0]?.variantes[0] || null);
+    setCatalogVersion((current) => current + 1);
   }
+  useEffect(() => {
+    let active = true;
+    setCatalogLoading(true);
+    setVisibleProducts([]);
+    const timer = setTimeout(
+      () => {
+        const params = new URLSearchParams();
+        if (catalogLocation) params.set('location', catalogLocation);
+        if (query.trim()) params.set('search', query.trim());
+        if (brand) params.set('brand', brand);
+        if (color) params.set('color', color);
+        if (size) params.set('size', size);
+        void api(`/catalog${params.size ? `?${params}` : ''}`)
+          .then((data) => {
+            if (active) setVisibleProducts(data.products);
+          })
+          .catch((reason) => {
+            if (active) setError(reason.message);
+          })
+          .finally(() => {
+            if (active) setCatalogLoading(false);
+          });
+      },
+      query ? 200 : 0,
+    );
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [catalogLocation, query, brand, color, size, catalogVersion]);
   useEffect(() => {
     const epoch = accountEpoch.current;
     refresh()
@@ -412,7 +457,7 @@ export function App() {
       if (epoch === viewEpoch.current) setBusy(false);
     }
   }
-  const filtered = products.filter((p) => p.nombre.toLowerCase().includes(query.toLowerCase()));
+  const filtered = visibleProducts;
   return (
     <>
       <a href="#contenido" className="skip-link">
@@ -578,7 +623,7 @@ export function App() {
                 <div className="section-title">
                   <span className="eyebrow">COLECCIÓN 01</span>
                   <h2>
-                    Esenciales para todos los días<span> ({products.length})</span>
+                    Esenciales para todos los días<span> ({filtered.length})</span>
                   </h2>
                 </div>
                 <div className="catalog-filters">
@@ -587,9 +632,7 @@ export function App() {
                     <select
                       value={catalogLocation}
                       onChange={(event) => {
-                        const value = event.target.value;
-                        setCatalogLocation(value);
-                        void loadCatalog(value).catch((reason) => setError(reason.message));
+                        setCatalogLocation(event.target.value);
                       }}
                     >
                       <option value="">Todas las sucursales y almacenes</option>
@@ -597,6 +640,33 @@ export function App() {
                         <option value={location.id} key={location.id}>
                           {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'} · {location.nombre}
                         </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="location-filter">
+                    <span>Marca</span>
+                    <select value={brand} onChange={(event) => setBrand(event.target.value)}>
+                      <option value="">Todas las marcas</option>
+                      {filterOptions.brands.map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="location-filter">
+                    <span>Color</span>
+                    <select value={color} onChange={(event) => setColor(event.target.value)}>
+                      <option value="">Todos los colores</option>
+                      {filterOptions.colors.map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="location-filter">
+                    <span>Talla</span>
+                    <select value={size} onChange={(event) => setSize(event.target.value)}>
+                      <option value="">Todas las tallas</option>
+                      {filterOptions.sizes.map((option) => (
+                        <option key={option}>{option}</option>
                       ))}
                     </select>
                   </label>
@@ -609,10 +679,26 @@ export function App() {
                       onChange={(e) => setQuery(e.target.value)}
                     />
                   </label>
+                  {(catalogLocation || brand || color || size || query) && (
+                    <button
+                      className="clear-catalog-filters"
+                      onClick={() => {
+                        setCatalogLocation('');
+                        setBrand('');
+                        setColor('');
+                        setSize('');
+                        setQuery('');
+                      }}
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="product-grid">
                 {filtered.map((p, i) => {
+                  const images = p.imagenes || [];
+                  const activeImage = images[galleryIndex[p.id] || 0] || images[0];
                   const v =
                     selected && p.variantes.some((x) => x.id === selected.id)
                       ? selected
@@ -624,7 +710,15 @@ export function App() {
                           <Shirt size={12} />{' '}
                           {v?.modeloId ? 'Disponible en 3D' : 'Colección de desarrollo'}
                         </span>
-                        <GarmentArt color={v?.color_hex} />
+                        {activeImage ? (
+                          <img
+                            className="catalog-photo"
+                            src={activeImage.url}
+                            alt={activeImage.textoAlternativo}
+                          />
+                        ) : (
+                          <GarmentArt color={v?.color_hex} />
+                        )}
                         <button
                           aria-label={'Probar ' + p.nombre}
                           onClick={() => v && tryGarment(v)}
@@ -634,12 +728,28 @@ export function App() {
                           <ArrowUpRight size={20} />
                         </button>
                       </div>
+                      {images.length > 1 && (
+                        <div className="catalog-thumbnails" aria-label={`Fotos de ${p.nombre}`}>
+                          {images.map((image, index) => (
+                            <button
+                              key={image.url}
+                              className={activeImage?.url === image.url ? 'active' : ''}
+                              aria-label={`Ver foto ${index + 1} de ${p.nombre}`}
+                              onClick={() =>
+                                setGalleryIndex((current) => ({ ...current, [p.id]: index }))
+                              }
+                            >
+                              <img src={image.url} alt="" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <div className="product-title">
                         <h3>{p.nombre}</h3>
                         <b>{v ? money(v.precio) : '—'}</b>
                       </div>
                       <p>
-                        {p.material} · {v?.color}
+                        {p.marca || 'Sin marca'} · {p.material} · {v?.color}
                       </p>
                       <div className="variant-row">
                         <div className="sizes">
@@ -694,8 +804,10 @@ export function App() {
                   );
                 })}
               </div>
-              {filtered.length === 0 && (
-                <div className="empty">No hay prendas que coincidan con tu búsqueda.</div>
+              {!catalogLoading && filtered.length === 0 && (
+                <div className="empty">
+                  No hay prendas para esa combinación de sucursal, marca, color y talla.
+                </div>
               )}
             </section>
             <section className="how">
@@ -721,16 +833,18 @@ export function App() {
             </section>
           </>
         ) : page === 'admin' ? (
-          <Admin products={products} permissions={user?.permissions || []} />
+          <Admin
+            products={products}
+            categories={categories}
+            permissions={user?.permissions || []}
+            onCatalogChanged={loadCatalog}
+          />
         ) : page === 'reports' ? (
           <Reports />
         ) : page === 'sales' ? (
           <Sales />
         ) : page === 'commerce' ? (
-          <Commerce
-            locations={catalogLocations}
-            onInventoryChanged={() => loadCatalog(catalogLocation)}
-          />
+          <Commerce locations={catalogLocations} onInventoryChanged={loadCatalog} />
         ) : (
           <section className="avatar-page">
             <div className="section-title">

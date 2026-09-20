@@ -7,6 +7,7 @@ import {
   PackagePlus,
   Pencil,
   Power,
+  Shirt,
   UserCog,
   UserPlus,
 } from 'lucide-react';
@@ -33,8 +34,11 @@ type Staff = {
 type Product = {
   id: string;
   nombre: string;
+  marca?: string | null;
   variantes: { id: string; talla: string; color: string }[];
 };
+type Category = { id: string; nombre: string };
+type NewVariant = { talla: string; color: string; colorHex: string };
 type Movement = {
   id: string;
   tipo: string;
@@ -81,7 +85,17 @@ type ArResource = {
   imagePath: string;
 };
 
-export function Admin({ products, permissions }: { products: Product[]; permissions: string[] }) {
+export function Admin({
+  products,
+  categories,
+  permissions,
+  onCatalogChanged,
+}: {
+  products: Product[];
+  categories: Category[];
+  permissions: string[];
+  onCatalogChanged: () => Promise<void>;
+}) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [message, setMessage] = useState('');
@@ -98,6 +112,11 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
   const [countingRow, setCountingRow] = useState<InventoryRow | null>(null);
   const [thresholdRow, setThresholdRow] = useState<InventoryRow | null>(null);
   const [arResources, setArResources] = useState<ArResource[]>([]);
+  const [newVariants, setNewVariants] = useState<NewVariant[]>([
+    { talla: 'M', color: '', colorHex: '#c9b8a7' },
+  ]);
+  const [brandChoice, setBrandChoice] = useState('__new__');
+  const [typeChoice, setTypeChoice] = useState('__new__');
   const managesLocations = permissions.includes('ubicaciones:gestionar');
   const managesUsers = permissions.includes('usuarios:gestionar');
   const managesInventory = permissions.includes('inventario:gestionar');
@@ -109,6 +128,56 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
       ),
     [products],
   );
+  const brands = useMemo(
+    () =>
+      [
+        ...new Set(
+          products.map((product) => product.marca).filter((value): value is string => !!value),
+        ),
+      ].sort(),
+    [products],
+  );
+
+  async function createGarment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const photos = (form.elements.namedItem('fotos') as HTMLInputElement).files;
+    const body = new FormData();
+    for (const name of ['nombre', 'descripcion', 'material', 'precio', 'licencia'])
+      body.set(name, String(values.get(name) || ''));
+    body.set(
+      'marca',
+      brandChoice === '__new__' ? String(values.get('nuevaMarca') || '') : brandChoice,
+    );
+    body.set(
+      'tipoPrenda',
+      typeChoice === '__new__' ? String(values.get('nuevoTipo') || '') : typeChoice,
+    );
+    body.set('variantes', JSON.stringify(newVariants));
+    for (const photo of Array.from(photos || [])) body.append('fotos', photo);
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const created = await api('/catalog/garments', { method: 'POST', body });
+      form.reset();
+      setBrandChoice('__new__');
+      setTypeChoice('__new__');
+      setNewVariants([{ talla: 'M', color: '', colorHex: '#c9b8a7' }]);
+      await onCatalogChanged();
+      await reload();
+      if (inventoryLocation)
+        setInventory(await api(`/locations/${inventoryLocation.id}/inventory`));
+      setMessage(
+        `${created.nombre} creada en ${created.ubicaciones} ubicaciones con stock inicial de cero. Ahora puedes agregar existencias por sucursal.`,
+      );
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function reload() {
     const [locationData, staffData, alertData, arData] = await Promise.all([
@@ -206,6 +275,7 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
       });
       form.reset();
       await reload();
+      await onCatalogChanged();
       if (inventoryLocation)
         setInventory(await api(`/locations/${inventoryLocation.id}/inventory`));
       setMessage('Cambios guardados correctamente.');
@@ -407,6 +477,198 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
       )}
       <div className="admin-grid">
         {managesCatalog && (
+          <form
+            className="admin-card garment-create-card"
+            onSubmit={(event) => void createGarment(event)}
+          >
+            <Shirt size={24} />
+            <h2>Nueva prenda</h2>
+            <p>
+              La prenda se mostrará en todas las sucursales y almacenes. Las existencias se cargan
+              después en cada ubicación. Estas fotos son para el catálogo; la imagen AR se
+              administra aparte.
+            </p>
+            <label>
+              Nombre de la prenda
+              <input
+                name="nombre"
+                minLength={2}
+                maxLength={160}
+                required
+                placeholder="Blusa de lino"
+              />
+            </label>
+            <div className="two-fields">
+              <label>
+                Tipo de prenda
+                <select value={typeChoice} onChange={(event) => setTypeChoice(event.target.value)}>
+                  <option value="__new__">Crear nuevo tipo</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.nombre}>
+                      {category.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {typeChoice === '__new__' && (
+                <label>
+                  Nuevo tipo
+                  <input
+                    name="nuevoTipo"
+                    required
+                    minLength={2}
+                    maxLength={80}
+                    placeholder="Blusa"
+                  />
+                </label>
+              )}
+            </div>
+            <div className="two-fields">
+              <label>
+                Marca
+                <select
+                  value={brandChoice}
+                  onChange={(event) => setBrandChoice(event.target.value)}
+                >
+                  <option value="__new__">Crear nueva marca</option>
+                  {brands.map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {brandChoice === '__new__' && (
+                <label>
+                  Nueva marca
+                  <input
+                    name="nuevaMarca"
+                    required
+                    minLength={2}
+                    maxLength={100}
+                    placeholder="Nombre de marca"
+                  />
+                </label>
+              )}
+            </div>
+            <label>
+              Material
+              <input name="material" minLength={2} maxLength={150} required placeholder="Lino" />
+            </label>
+            <label>
+              Descripción
+              <textarea
+                name="descripcion"
+                minLength={10}
+                maxLength={3000}
+                required
+                placeholder="Describe el corte y los detalles de la prenda"
+              />
+            </label>
+            <label>
+              Precio por variante (Bs)
+              <input name="precio" type="number" min="0.01" max="1000000" step="0.01" required />
+            </label>
+            <h3>Tallas y colores</h3>
+            {newVariants.map((variant, index) => (
+              <div className="garment-variant-row" key={index}>
+                <label>
+                  Talla
+                  <input
+                    aria-label={`Talla ${index + 1}`}
+                    value={variant.talla}
+                    required
+                    maxLength={20}
+                    onChange={(event) =>
+                      setNewVariants((current) =>
+                        current.map((item, i) =>
+                          i === index ? { ...item, talla: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Color
+                  <input
+                    aria-label={`Color ${index + 1}`}
+                    value={variant.color}
+                    required
+                    maxLength={50}
+                    onChange={(event) =>
+                      setNewVariants((current) =>
+                        current.map((item, i) =>
+                          i === index ? { ...item, color: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Muestra
+                  <input
+                    aria-label={`Muestra de color ${index + 1}`}
+                    type="color"
+                    value={variant.colorHex}
+                    onChange={(event) =>
+                      setNewVariants((current) =>
+                        current.map((item, i) =>
+                          i === index ? { ...item, colorHex: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                {newVariants.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewVariants((current) => current.filter((_, i) => i !== index))
+                    }
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              disabled={newVariants.length >= 30}
+              onClick={() =>
+                setNewVariants((current) => [
+                  ...current,
+                  { talla: 'M', color: '', colorHex: '#c9b8a7' },
+                ])
+              }
+            >
+              + Añadir talla y color
+            </button>
+            <label>
+              Fotos de la prenda (1 a 8, PNG/JPEG/WebP, máximo 5 MB cada una)
+              <input
+                name="fotos"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                required
+              />
+            </label>
+            <label>
+              Licencia o autorización de las fotos
+              <input
+                name="licencia"
+                minLength={3}
+                maxLength={255}
+                required
+                placeholder="Fotografías propias"
+              />
+            </label>
+            <button className="primary" disabled={busy}>
+              Crear prenda
+            </button>
+          </form>
+        )}
+        {managesCatalog && (
           <form className="admin-card" onSubmit={(event) => void uploadArImage(event)}>
             <ImagePlus size={24} />
             <h2>Nueva imagen para prueba AR</h2>
@@ -561,7 +823,7 @@ export function Admin({ products, permissions }: { products: Product[]; permissi
             }}
           >
             <PackagePlus size={24} />
-            <h2>Ajustar existencias</h2>
+            <h2>Agregar o ajustar stock</h2>
             <label>
               Ubicación
               <select name="ubicacion" required>
