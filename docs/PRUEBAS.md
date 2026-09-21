@@ -8,7 +8,7 @@ Fecha: 16 de septiembre de 2026. Entorno local Windows, Node 22.19, PostgreSQL 1
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Preparación local | `setup.ps1` completó instalación reproducible desde los bloqueos de dependencias, verificación de recursos, generación de GLB, semilla y compilación. Se probó sobre este equipo con clúster y descargas ya existentes; no en un segundo equipo limpio |
 | Esquema           | 49 tablas funcionales y 83 claves foráneas consultadas en PostgreSQL; Prisma válido y migración aplicada sin pendientes                                                                                                                                |
-| API               | **39 pruebas de integración aprobadas** en `vestidor18_test`; incluyen seguridad web/móvil, WebSocket autenticado, avatares, sucursales/almacenes, personal, inventario, ventas, catálogo, reportes, predicciones, recomendaciones y analítica         |
+| API               | **44 pruebas de integración aprobadas** en `vestidor18_test`; incluyen seguridad web/móvil, WebSocket autenticado, avatares, sucursales/almacenes, personal, inventario, ventas, carrito, pedidos, pagos simulados, catálogo con galería, recursos AR, reportes, predicciones, recomendaciones y analítica         |
 | React Native      | TypeScript sin errores, dependencias Expo compatibles y bundle Android generado por Metro; cámara física y seguimiento corporal aún no acreditados                                                                                                     |
 | Python/Blender    | **9 pruebas aprobadas**, incluyendo exportación de un GLB cuya altura geométrica corresponde a 1,85 m, dentro de 2 cm de tolerancia                                                                                                                    |
 | Navegador         | Registro, catálogo, captura, acceso privado a fixture, aprobación, dos prendas sucesivas, borrado y sesión durante descarga verificados con Chromium                                                                                                   |
@@ -28,6 +28,8 @@ Fecha: 16 de septiembre de 2026. Entorno local Windows, Node 22.19, PostgreSQL 1
 `apps/api/test/sales.test.ts` comprueba que el Vendedor solo vea sus ubicaciones asignadas; que una venta cree pedido, detalle, pago y movimiento mientras descuenta stock una sola vez; que el reintento idempotente no duplique la salida; que el stock insuficiente revierta toda la transacción; y que el rol Cliente no acceda al punto de venta.
 
 `apps/api/test/mobile.test.ts` comprueba login y renovación móvil con tokens rotativos, invalidación del acceso anterior, rechazo de reutilización del token, autenticación WebSocket, suscripción a inventario activo y revocación al cerrar sesión.
+
+`apps/api/test/catalog-garments.test.ts` comprueba el alta de una prenda con galería, variantes por talla y color, catálogo común con existencias separadas y filtros combinados. `apps/api/test/catalog-ar.test.ts` comprueba que un PNG AR quede en borrador y solo llegue al catálogo móvil después de publicarse. `apps/api/test/commerce.test.ts` cubre carrito, reserva, pago simulado, idempotencia, rechazo y vencimiento.
 
 ## Regresiones reproducidas y corregidas
 

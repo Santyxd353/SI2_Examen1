@@ -1,6 +1,6 @@
 # Vestidor 3D · Grupo 18
 
-Primera entrega ejecutable del ciclo 1 del documento [Plataforma_Vestidor3D_Grupo18.docx](docs/Plataforma_Vestidor3D_Grupo18.docx), también disponible en [PDF](docs/Plataforma_Vestidor3D_Grupo18.pdf). El desarrollo conserva el alcance aprobado y registra los pendientes en [docs/AVANCE.md](docs/AVANCE.md). Esta versión no representa el sistema final ni el cierre del ciclo 1.
+Primera entrega ejecutable basada en el documento actualizado [Plataforma_Vestidor3D_Grupo18.docx](docs/Plataforma_Vestidor3D_Grupo18.docx), también disponible en [PDF](docs/Plataforma_Vestidor3D_Grupo18.pdf). La línea base estructurada se conserva en [docs/linea-base.json](docs/linea-base.json) y la versión original del Word permanece en el historial de Git. El estado requisito por requisito está en [docs/AUDITORIA_ALCANCE_2026-09-20.md](docs/AUDITORIA_ALCANCE_2026-09-20.md). Esta versión todavía no representa el sistema final.
 
 Repositorio oficial: [Santyxd353/SI2_Examen1](https://github.com/Santyxd353/SI2_Examen1). Rama principal: `main`.
 
@@ -79,7 +79,7 @@ Los scripts actuales usan los puertos locales **55418 / 3018 / 5173**. Una conex
 | `scripts`        | Preparación, arranque, semilla y verificación de navegador                                                   |
 | `docs`           | Línea base aprobada, avance y evidencia de pruebas                                                           |
 
-Existe una primera base Android/iOS en `apps/mobile`: React Native con Expo, sesión móvil renovable en almacenamiento seguro, catálogo por ubicación, cámara frontal, guía visual AR y actualización de inventario por WebSocket. Todavía no incluye detección corporal ni deformación de prendas; la superposición actual está identificada como prototipo.
+Existe una base Android/iOS en `apps/mobile`: React Native con Expo, sesión móvil renovable en almacenamiento seguro, catálogo por ubicación, cámara frontal, seguimiento corporal experimental mediante MediaPipe en Android, superposición aproximada y actualización de inventario por WebSocket. La detección usa capturas periódicas; todavía faltan flujo continuo, deformación, oclusión, calibración amplia e implementación nativa para iOS.
 
 Para iniciar Metro y abrir la base móvil con Expo Go:
 

@@ -29,13 +29,18 @@ function Test-LocalPort([int]$Port) {
 function Start-LocalDatabase {
     $pgBin = Get-PostgresBin
     $cluster = Assert-ProjectPath (Join-Path $ProjectRoot '.local/pgdata')
+    $settings = Read-LocalConfig
+    if (-not $settings.ContainsKey('DATABASE_URL')) { throw 'DATABASE_URL no está configurada en .env.' }
+    $databaseUri = [Uri]$settings['DATABASE_URL']
+    $databasePort = $databaseUri.Port
+    if ($databasePort -le 0) { $databasePort = 5432 }
     if (-not (Test-Path -LiteralPath (Join-Path $cluster 'PG_VERSION'))) { throw 'Primero ejecuta scripts/setup.ps1.' }
     & (Join-Path $pgBin 'pg_ctl.exe') status -D $cluster *> $null
     if ($LASTEXITCODE -eq 0) { return }
-    if (Test-LocalPort 55418) { throw 'El puerto 55418 está ocupado por otra instancia. No se modificó ese proceso.' }
-    $process = Start-Process -FilePath (Join-Path $pgBin 'postgres.exe') -ArgumentList @('-D', ('"' + $cluster + '"'), '-p', '55418', '-h', '127.0.0.1') -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $ProjectRoot '.local/postgres-out.log') -RedirectStandardError (Join-Path $ProjectRoot '.local/postgres-error.log')
+    if (Test-LocalPort $databasePort) { throw ('El puerto ' + $databasePort + ' está ocupado por otra instancia. No se modificó ese proceso.') }
+    $process = Start-Process -FilePath (Join-Path $pgBin 'postgres.exe') -ArgumentList @('-D', ('"' + $cluster + '"'), '-p', $databasePort, '-h', '127.0.0.1') -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $ProjectRoot '.local/postgres-out.log') -RedirectStandardError (Join-Path $ProjectRoot '.local/postgres-error.log')
     for ($i=0; $i -lt 40; $i++) {
-        if (Test-LocalPort 55418) { return }
+        if (Test-LocalPort $databasePort) { return }
         if ($process.HasExited) { throw 'PostgreSQL no arrancó; revisa .local/postgres-error.log.' }
         Start-Sleep -Milliseconds 250
     }
