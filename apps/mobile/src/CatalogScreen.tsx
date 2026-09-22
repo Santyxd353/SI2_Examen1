@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -70,6 +71,10 @@ export function CatalogScreen({
   onTryAr,
   onLogout,
 }: Props) {
+  const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
+  const measuredSystemBars =
+    Dimensions.get('screen').height - Dimensions.get('window').height - topInset;
+  const bottomInset = Platform.OS === 'android' ? Math.max(24, measuredSystemBars) : 12;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -130,7 +135,7 @@ export function CatalogScreen({
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { paddingTop: topInset }]}>
       <StatusBar style="dark" />
       <NativeStatusBar barStyle="dark-content" backgroundColor="#fbfaf6" />
       <View style={styles.header}>
@@ -200,7 +205,7 @@ export function CatalogScreen({
         numColumns={2}
         keyExtractor={(item) => item.id}
         columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 94 + bottomInset }]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
@@ -391,7 +396,7 @@ export function CatalogScreen({
         }}
       />
 
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { minHeight: 68 + bottomInset, paddingBottom: bottomInset }]}>
         <BottomAction label="Inicio" icon="⌂" active={!favoritesOnly} onPress={resetHome} />
         <BottomAction
           label="Favoritos"
@@ -1055,7 +1060,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     minHeight: 72,
-    paddingBottom: Platform.OS === 'ios' ? 12 : 5,
     backgroundColor: '#fffffff5',
     borderTopWidth: 1,
     borderTopColor: line,
