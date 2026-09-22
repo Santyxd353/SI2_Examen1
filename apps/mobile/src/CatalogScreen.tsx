@@ -39,6 +39,7 @@ type Props = {
   onCategoryChange: (value: string) => void;
   onClearFilters: () => void;
   onTryAr: (product: Product, variant: Variant) => void;
+  onAdminMode?: () => void;
   onLogout: () => void;
 };
 
@@ -69,6 +70,7 @@ export function CatalogScreen({
   onCategoryChange,
   onClearFilters,
   onTryAr,
+  onAdminMode,
   onLogout,
 }: Props) {
   const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
@@ -453,6 +455,11 @@ export function CatalogScreen({
             </Text>
             <Text style={styles.accountEmail}>{user.correo}</Text>
             <Text style={styles.accountRole}>{user.roles.join(' · ')}</Text>
+            {onAdminMode && (
+              <Pressable style={styles.adminModeButton} onPress={onAdminMode}>
+                <Text style={styles.adminModeText}>Volver al panel administrador</Text>
+              </Pressable>
+            )}
             <Pressable style={styles.logoutButton} onPress={onLogout}>
               <Text style={styles.logoutText}>Cerrar sesión</Text>
             </Pressable>
@@ -1121,7 +1128,7 @@ const styles = StyleSheet.create({
   logoutButton: {
     width: '100%',
     minHeight: 46,
-    marginTop: 22,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: '#c8cec9',
     borderRadius: 8,
@@ -1129,6 +1136,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutText: { color: '#9f382d', fontWeight: '700' },
+  adminModeButton: {
+    width: '100%',
+    minHeight: 46,
+    marginTop: 22,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: green,
+  },
+  adminModeText: { color: '#fff', fontWeight: '800' },
   sheetOverlay: { flex: 1, backgroundColor: '#1118', justifyContent: 'flex-end' },
   sheetDismiss: { flex: 1 },
   sheet: {

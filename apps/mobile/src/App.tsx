@@ -16,6 +16,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Polygon } from 'react-native-svg';
 import { API_URL, api, login, logout, restoreSession } from './api';
+import { AdminDashboard } from './AdminDashboard';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
@@ -24,11 +25,13 @@ import type { Layout, Torso } from './pose';
 import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
 
 type Page = 'catalog' | 'ar';
+const isAdministrator = (identity: Identity) => identity.roles.includes('Administrador');
 
 export function App() {
   const [user, setUser] = useState<Identity | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState<Page>('catalog');
+  const [adminClientMode, setAdminClientMode] = useState(false);
   const [catalog, setCatalog] = useState<Catalog>({
     products: [],
     locations: [],
@@ -71,7 +74,7 @@ export function App() {
     restoreSession()
       .then(async (identity) => {
         setUser(identity);
-        if (identity) await loadCatalog('');
+        if (identity && !isAdministrator(identity)) await loadCatalog('');
       })
       .catch((reason) => setError(reason.message))
       .finally(() => setLoading(false));
@@ -83,12 +86,12 @@ export function App() {
   }, [search]);
 
   useEffect(() => {
-    if (!user || !location) return;
+    if (!user || !location || (isAdministrator(user) && !adminClientMode)) return;
     void loadCatalog(location.id).catch((reason) => setError(reason.message));
     return connectRealtime(location.id, () => {
       void loadCatalog(location.id).catch(() => {});
     });
-  }, [user, location?.id, brand, color, size, debouncedSearch, category]);
+  }, [user, location?.id, brand, color, size, debouncedSearch, category, adminClientMode]);
 
   if (loading)
     return (
@@ -107,10 +110,28 @@ export function App() {
           try {
             const identity = await login(correo, clave);
             setUser(identity);
-            await loadCatalog('');
+            setAdminClientMode(false);
+            if (!isAdministrator(identity)) await loadCatalog('');
           } catch (reason) {
             setError((reason as Error).message);
           }
+        }}
+      />
+    );
+
+  if (isAdministrator(user) && !adminClientMode)
+    return (
+      <AdminDashboard
+        user={user}
+        onClientMode={async () => {
+          await loadCatalog('');
+          setAdminClientMode(true);
+        }}
+        onLogout={() => {
+          void logout();
+          setUser(null);
+          setAdminClientMode(false);
+          setPage('catalog');
         }}
       />
     );
@@ -153,9 +174,19 @@ export function App() {
         setSelection({ product, variant });
         setPage('ar');
       }}
+      onAdminMode={
+        isAdministrator(user)
+          ? () => {
+              setPage('catalog');
+              setAdminClientMode(false);
+            }
+          : undefined
+      }
       onLogout={() => {
         void logout();
         setUser(null);
+        setAdminClientMode(false);
+        setPage('catalog');
       }}
     />
   );
