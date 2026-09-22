@@ -27,6 +27,7 @@ export type Variant = {
 
 export type Product = {
   id: string;
+  categoria_id: string;
   nombre: string;
   descripcion: string;
   material: string;
@@ -45,4 +46,5 @@ export type Catalog = {
   products: Product[];
   locations: CatalogLocation[];
   filters: { brands: string[]; colors: string[]; sizes: string[] };
+  categories: { id: string; nombre: string; descripcion?: string | null; activa: boolean }[];
 };

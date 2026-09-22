@@ -87,6 +87,7 @@ export class CatalogController {
     @Query('size') size = '',
   ) {
     const locationId = z.string().uuid().safeParse(location).success ? location : null;
+    const searchFilter = search.trim().slice(0, 100);
     const brandFilter = brand.trim().slice(0, 100);
     const colorFilter = color.trim().slice(0, 50);
     const sizeFilter = size.trim().slice(0, 20);
@@ -99,7 +100,15 @@ export class CatalogController {
     const products = await this.db.producto.findMany({
       where: {
         estado: 'PUBLICADO',
-        nombre: { contains: search.slice(0, 100), mode: 'insensitive' },
+        ...(searchFilter
+          ? {
+              OR: [
+                { nombre: { contains: searchFilter, mode: 'insensitive' as const } },
+                { marca: { contains: searchFilter, mode: 'insensitive' as const } },
+                { descripcion: { contains: searchFilter, mode: 'insensitive' as const } },
+              ],
+            }
+          : {}),
         ...(brandFilter ? { marca: { equals: brandFilter, mode: 'insensitive' as const } } : {}),
         ...(colorFilter || sizeFilter
           ? {

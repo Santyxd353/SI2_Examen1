@@ -131,6 +131,13 @@ test('cliente filtra talla, color y marca; prenda y fotos son comunes con stock 
     (await request(app.getHttpServer()).get(matching.body.products[0].imagenes[0].url)).status,
   ).toBe(200);
   expect(matching.body.filters.brands).toContain(brand);
+  const searchedByBrand = await request(app.getHttpServer()).get(
+    `/api/catalog?search=${encodeURIComponent(brand)}`,
+  );
+  expect(searchedByBrand.status).toBe(200);
+  expect(
+    searchedByBrand.body.products.some((product: { id: string }) => product.id === productId),
+  ).toBe(true);
   expect(
     (
       await request(app.getHttpServer()).get(

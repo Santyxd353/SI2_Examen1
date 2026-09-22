@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Polygon } from 'react-native-svg';
 import { API_URL, api, login, logout, restoreSession } from './api';
+import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
 import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
@@ -33,15 +33,17 @@ export function App() {
     products: [],
     locations: [],
     filters: { brands: [], colors: [], sizes: [] },
+    categories: [],
   });
   const [location, setLocation] = useState<CatalogLocation | null>(null);
   const [brand, setBrand] = useState('');
   const [color, setColor] = useState('');
   const [size, setSize] = useState('');
-  const [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({});
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [category, setCategory] = useState('');
   const catalogRequest = useRef(0);
   const [selection, setSelection] = useState<{ product: Product; variant: Variant } | null>(null);
-  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(false);
 
@@ -52,6 +54,8 @@ export function App() {
     if (brand) params.set('brand', brand);
     if (color) params.set('color', color);
     if (size) params.set('size', size);
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (category) params.set('category', category);
     setCatalogLoading(true);
     try {
       const data = await api(`/catalog${params.size ? `?${params}` : ''}`);
@@ -74,12 +78,17 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
     if (!user || !location) return;
     void loadCatalog(location.id).catch((reason) => setError(reason.message));
     return connectRealtime(location.id, () => {
       void loadCatalog(location.id).catch(() => {});
     });
-  }, [user, location?.id, brand, color, size]);
+  }, [user, location?.id, brand, color, size, debouncedSearch, category]);
 
   if (loading)
     return (
@@ -116,205 +125,39 @@ export function App() {
     );
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.brand}>vestidor°</Text>
-          <Text style={styles.brandSub}>REALIDAD AUMENTADA</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            void logout();
-            setUser(null);
-          }}
-        >
-          <Text style={styles.link}>Salir</Text>
-        </Pressable>
-      </View>
-      <FlatList
-        data={catalogLoading ? [] : catalog.products}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <View style={styles.intro}>
-            <Text style={styles.eyebrow}>VESTIDOR AR MUJER</Text>
-            <Text style={styles.title}>Prueba prendas sobre tu imagen real.</Text>
-            <Text style={styles.paragraph}>
-              La cámara se procesa en tu dispositivo. La visualización es aproximada y no garantiza
-              el ajuste real.
-            </Text>
-            <Text style={styles.label}>Disponibilidad</Text>
-            <View style={styles.chips}>
-              {catalog.locations.map((item) => (
-                <Pressable
-                  key={item.id}
-                  style={[styles.chip, item.id === location?.id && styles.chipActive]}
-                  onPress={() => setLocation(item)}
-                >
-                  <Text style={item.id === location?.id ? styles.chipTextActive : styles.chipText}>
-                    {item.nombre}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <FilterRow
-              label="Marca"
-              options={catalog.filters?.brands || []}
-              value={brand}
-              onChange={setBrand}
-            />
-            <FilterRow
-              label="Color"
-              options={catalog.filters?.colors || []}
-              value={color}
-              onChange={setColor}
-            />
-            <FilterRow
-              label="Talla"
-              options={catalog.filters?.sizes || []}
-              value={size}
-              onChange={setSize}
-            />
-            {(brand || color || size) && (
-              <Pressable
-                onPress={() => {
-                  setBrand('');
-                  setColor('');
-                  setSize('');
-                }}
-              >
-                <Text style={styles.link}>Limpiar filtros</Text>
-              </Pressable>
-            )}
-            {!!error && <Text style={styles.error}>{error}</Text>}
-          </View>
-        }
-        ListEmptyComponent={
-          catalogLoading ? (
-            <ActivityIndicator color="#697b5e" />
-          ) : (
-            <Text style={styles.empty}>
-              No hay prendas para esa combinación de sucursal, marca, color y talla.
-            </Text>
-          )
-        }
-        renderItem={({ item }) => {
-          const variant =
-            item.variantes.find((option) => option.id === selectedVariants[item.id]) ??
-            item.variantes[0];
-          if (!variant) return null;
-          const images = item.imagenes || [];
-          const activeImage = images[galleryIndex[item.id] || 0] || images[0];
-          return (
-            <View style={styles.productCard}>
-              {activeImage ? (
-                <Image
-                  source={{ uri: `${API_URL.replace(/\/api$/, '')}${activeImage.url}` }}
-                  accessibilityLabel={activeImage.textoAlternativo}
-                  style={styles.catalogImage}
-                />
-              ) : (
-                <View
-                  style={[styles.swatch, { backgroundColor: variant.color_hex || '#c9b8a7' }]}
-                />
-              )}
-              <View style={styles.productCopy}>
-                <Text style={styles.productName}>{item.nombre}</Text>
-                <Text style={styles.productMeta}>{item.marca || 'Sin marca'}</Text>
-                {images.length > 1 && (
-                  <View style={styles.photoChoices}>
-                    {images.map((image, index) => (
-                      <Pressable
-                        key={image.url}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Ver foto ${index + 1} de ${item.nombre}`}
-                        style={[
-                          styles.photoChoice,
-                          activeImage?.url === image.url && styles.photoChoiceActive,
-                        ]}
-                        onPress={() =>
-                          setGalleryIndex((current) => ({ ...current, [item.id]: index }))
-                        }
-                      >
-                        <Text style={styles.photoChoiceText}>{index + 1}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-                <Text style={styles.productMeta}>
-                  {variant.color} · Talla {variant.talla}
-                </Text>
-                <Text style={styles.productMeta}>{variant.disponible} disponibles</Text>
-                <View style={styles.variantChips}>
-                  {item.variantes.map((option) => (
-                    <Pressable
-                      key={option.id}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: option.id === variant.id }}
-                      style={[
-                        styles.variantChip,
-                        option.id === variant.id && styles.variantChipActive,
-                      ]}
-                      onPress={() =>
-                        setSelectedVariants((current) => ({ ...current, [item.id]: option.id }))
-                      }
-                    >
-                      <Text style={styles.variantText}>
-                        {option.talla} · {option.color}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-              <Pressable
-                style={styles.tryButton}
-                onPress={() => {
-                  setSelection({ product: item, variant });
-                  setPage('ar');
-                }}
-              >
-                <Text style={styles.tryButtonText}>Probar AR</Text>
-              </Pressable>
-            </View>
-          );
-        }}
-      />
-    </SafeAreaView>
-  );
-}
-
-function FilterRow({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <View>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.chips}>
-        {['', ...options].map((option) => (
-          <Pressable
-            key={option || 'all'}
-            accessibilityRole="button"
-            accessibilityState={{ selected: value === option }}
-            style={[styles.chip, value === option && styles.chipActive]}
-            onPress={() => onChange(option)}
-          >
-            <Text style={value === option ? styles.chipTextActive : styles.chipText}>
-              {option || 'Todas'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
+    <CatalogScreen
+      user={user}
+      catalog={catalog}
+      loading={catalogLoading}
+      error={error}
+      location={location}
+      brand={brand}
+      color={color}
+      size={size}
+      search={search}
+      category={category}
+      onLocationChange={setLocation}
+      onBrandChange={setBrand}
+      onColorChange={setColor}
+      onSizeChange={setSize}
+      onSearchChange={setSearch}
+      onCategoryChange={setCategory}
+      onClearFilters={() => {
+        setBrand('');
+        setColor('');
+        setSize('');
+        setCategory('');
+        setSearch('');
+      }}
+      onTryAr={(product, variant) => {
+        setSelection({ product, variant });
+        setPage('ar');
+      }}
+      onLogout={() => {
+        void logout();
+        setUser(null);
+      }}
+    />
   );
 }
 
