@@ -39,6 +39,7 @@ test('el vestido cubre más largo que una blusa', () => {
   assert.ok(torso);
   assert.equal(garmentKind('Vestido floral'), 'dress');
   assert.equal(garmentKind('Blusa blanca'), 'top');
+  assert.equal(garmentKind('POLO PARA MUJER'), 'top');
   assert.equal(garmentKind('Pantalón'), 'unsupported');
   assert.ok(garmentOutline(torso, 'dress')[4]!.y > garmentOutline(torso, 'top')[4]!.y);
 });

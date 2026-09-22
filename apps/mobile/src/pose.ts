@@ -21,7 +21,7 @@ export function garmentImageFrame(torso: Torso) {
 
 export function garmentKind(name: string): GarmentKind {
   if (/vestido|dress/i.test(name)) return 'dress';
-  if (/blusa|camisa|camiseta|top|chaqueta|polera|suéter|sudadera/i.test(name)) return 'top';
+  if (/blusa|camisa|camiseta|polo|top|chaqueta|polera|suéter|sudadera/i.test(name)) return 'top';
   return 'unsupported';
 }
 
