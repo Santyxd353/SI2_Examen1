@@ -1,0 +1,61 @@
+# syntax=docker/dockerfile:1.7
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY prisma ./prisma
+RUN ./node_modules/.bin/prisma generate
+
+COPY tsconfig.json ./
+COPY apps/api ./apps/api
+COPY apps/web ./apps/web
+RUN npm run build
+
+FROM node:22-bookworm-slim AS runtime
+ENV NODE_ENV=production \
+    API_HOST=0.0.0.0 \
+    API_PORT=3018 \
+    SERVE_WEB=true \
+    WEB_ROOT=/app/dist/web \
+    STORAGE_ROOT=/data/storage \
+    PYTHON_PATH=/opt/venv/bin/python \
+    POSE_MODEL_PATH=/opt/models/pose_landmarker.task \
+    BLENDER_PATH=/usr/bin/blender
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       blender ca-certificates curl libgl1 libglib2.0-0 libportaudio2 python3 python3-numpy python3-pip python3-venv tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY workers/avatar/requirements.lock.txt /tmp/avatar-requirements.txt
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/venv/bin/pip install --no-cache-dir -r /tmp/avatar-requirements.txt \
+    && rm /tmp/avatar-requirements.txt
+
+RUN mkdir -p /opt/models \
+    && curl --fail --location --retry 4 \
+       --output /opt/models/pose_landmarker.task \
+       https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task \
+    && echo "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1  /opt/models/pose_landmarker.task" | sha256sum --check --strict
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY scripts/seed.ts scripts/seed-women.ts scripts/grant-admin.ts ./scripts/
+COPY catalog-assets/women ./catalog-assets/women
+COPY workers/avatar ./workers/avatar
+COPY docker/azure-entrypoint.sh /usr/local/bin/azure-entrypoint
+RUN chmod 0755 /usr/local/bin/azure-entrypoint \
+    && mkdir -p /data/storage
+
+EXPOSE 3018
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/azure-entrypoint"]

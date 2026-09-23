@@ -53,6 +53,7 @@ type Movement = {
 type InventoryRow = {
   id: string;
   variante_id: string;
+  version: number;
   fisico: number;
   reservado: number;
   comprometido: number;
@@ -393,6 +394,7 @@ export function Admin({
         body: JSON.stringify({
           varianteId: countingRow.variante_id,
           conteoObservado: Number(values.conteoObservado),
+          expectedVersion: countingRow.version,
           motivo: values.motivo,
         }),
       });
@@ -402,6 +404,19 @@ export function Admin({
       setMessage('Conteo conciliado y movimiento registrado.');
     } catch (reason) {
       setError((reason as Error).message);
+      try {
+        const latest: InventoryRow[] = await api(`/locations/${inventoryLocation.id}/inventory`);
+        setInventory(latest);
+        const current = latest.find((row) => row.id === countingRow.id);
+        if (!current || current.version !== countingRow.version) {
+          setCountingRow(null);
+          setError(
+            'El inventario cambió. Revisa el saldo actualizado y abre nuevamente el conteo para confirmarlo.',
+          );
+        }
+      } catch {
+        // Preserve the original error and the original version until a successful reload.
+      }
     } finally {
       setBusy(false);
     }

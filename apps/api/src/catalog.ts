@@ -18,7 +18,8 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { randomUUID } from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import { PNG } from 'pngjs';
 import { z } from 'zod';
 import { Db } from './db';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
@@ -70,6 +71,39 @@ function galleryMime(file: Express.Multer.File) {
   )
     return { mime: 'image/webp', extension: 'webp' };
   throw new BadRequestException('Las fotos deben ser PNG, JPEG o WebP válidos.');
+}
+
+function validateArPng(bytes: Buffer) {
+  if (
+    bytes.length < 33 ||
+    bytes.length > 5 * 1024 * 1024 ||
+    !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
+    bytes.readUInt32BE(8) !== 13 ||
+    bytes.toString('ascii', 12, 16) !== 'IHDR'
+  )
+    throw new BadRequestException('Sube un PNG válido de hasta 5 MB.');
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  // Bound decoded memory before inflating any image data.
+  if (width < 256 || height < 256 || width > 2048 || height > 2048)
+    throw new BadRequestException('La imagen debe medir entre 256 y 2048 píxeles por lado.');
+  let decoded: PNG;
+  try {
+    decoded = PNG.sync.read(bytes, { checkCRC: true });
+  } catch {
+    throw new BadRequestException('El PNG está incompleto o dañado. Exporta la imagen nuevamente.');
+  }
+  let transparent = 0;
+  let visible = 0;
+  for (let offset = 3; offset < decoded.data.length; offset += 4) {
+    if (decoded.data[offset] <= 16) transparent++;
+    if (decoded.data[offset] >= 128) visible++;
+  }
+  const minimumPixels = Math.ceil(width * height * 0.05);
+  if (transparent < minimumPixels || visible < minimumPixels)
+    throw new BadRequestException(
+      'El PNG debe mostrar una prenda visible y un fondo transparente: al menos 5% de cada uno.',
+    );
 }
 @Controller('catalog')
 export class CatalogController {
@@ -130,6 +164,7 @@ export class CatalogController {
         ...(z.string().uuid().safeParse(category).success ? { categoria_id: category } : {}),
       },
       orderBy: { creado_en: 'asc' },
+      include: { categoria: { select: { nombre: true } } },
       take: 60,
     });
     const result = [];
@@ -236,6 +271,7 @@ export class CatalogController {
       )
         result.push({
           ...p,
+          tipoPrenda: p.categoria.nombre,
           imagenes: gallery.map((image) => ({
             url: `/assets/${image.clave_objeto.replace(/^public\//, '')}`,
             textoAlternativo: image.texto_alternativo,
@@ -363,7 +399,7 @@ export class CatalogController {
           });
           createdVariants.push(created);
           await tx.precio_canal.createMany({
-            data: (['WEB', 'APP'] as const).map((canal) => ({
+            data: (['WEB', 'APP', 'TIENDA'] as const).map((canal) => ({
               variante_id: created.id,
               canal,
               moneda: 'BOB',
@@ -462,19 +498,9 @@ export class CatalogController {
       })
       .strict()
       .parse(body);
-    if (
-      !file ||
-      file.mimetype !== 'image/png' ||
-      file.size < 100 ||
-      !file.buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-      file.buffer.toString('ascii', 12, 16) !== 'IHDR' ||
-      ![4, 6].includes(file.buffer[25])
-    )
-      throw new BadRequestException('Sube un PNG válido con canal de transparencia.');
-    const width = file.buffer.readUInt32BE(16);
-    const height = file.buffer.readUInt32BE(20);
-    if (width < 256 || height < 256 || width > 2048 || height > 2048)
-      throw new BadRequestException('La imagen debe medir entre 256 y 2048 píxeles por lado.');
+    if (!file || file.mimetype !== 'image/png')
+      throw new BadRequestException('Sube una imagen PNG con fondo transparente.');
+    validateArPng(file.buffer);
     const variant = await this.db.variante.findUnique({
       where: { id: data.varianteId },
       select: { producto_id: true },
@@ -519,6 +545,10 @@ export class CatalogController {
       });
       if (!resource) throw new NotFoundException('Imagen AR no encontrada.');
       if (estado === 'PUBLICADO') {
+        const bytes = await readFile(storedPath(resource.clave_objeto)).catch(() => {
+          throw new BadRequestException('El archivo AR no está disponible. Carga la imagen nuevamente.');
+        });
+        validateArPng(bytes);
         await tx.recurso_catalogo.updateMany({
           where: { variante_id: resource.variante_id, uso: 'AR', estado: 'PUBLICADO' },
           data: { estado: 'BORRADOR' },

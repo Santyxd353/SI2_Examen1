@@ -9,12 +9,20 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { Db } from './db';
 import { can, requireLocationScope } from './locations';
 import { RealtimeGateway } from './realtime';
+
+const discountedUnitPrice = (price: { importe: Prisma.Decimal; descuento_pct: Prisma.Decimal }) =>
+  price.importe
+    .mul(new Prisma.Decimal(100).minus(price.descuento_pct))
+    .div(100)
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+    .toNumber();
 
 const saleSchema = z
   .object({
@@ -73,11 +81,14 @@ export class SalesController {
                 producto: true,
                 precio_canal: {
                   where: {
-                    canal: { in: ['TIENDA', 'WEB'] },
+                    canal: 'TIENDA',
                     desde: { lte: now },
                     OR: [{ hasta: null }, { hasta: { gt: now } }],
                   },
                   orderBy: { desde: 'desc' },
+                },
+                disponibilidad_canal: {
+                  where: { canal: 'TIENDA', habilitada: true },
                 },
               },
             },
@@ -90,14 +101,14 @@ export class SalesController {
       nombre: location.nombre,
       tipo: location.tipo,
       variants: location.inventario.flatMap((inventory) => {
-        const prices = inventory.variante.precio_canal;
-        const price =
-          prices.find((item) => item.canal === 'TIENDA') ??
-          prices.find((item) => item.canal === 'WEB');
+        const price = inventory.variante.precio_canal[0];
         if (
           !price ||
           !inventory.variante.activa ||
-          inventory.variante.producto.estado !== 'PUBLICADO'
+          inventory.variante.producto.estado !== 'PUBLICADO' ||
+          !inventory.variante.disponibilidad_canal.some(
+            (policy) => policy.ubicacion_id === location.id,
+          )
         )
           return [];
         return [
@@ -108,7 +119,7 @@ export class SalesController {
             size: inventory.variante.talla,
             color: inventory.variante.color,
             available: inventory.disponible ?? 0,
-            price: Number(price.importe) * (1 - Number(price.descuento_pct) / 100),
+            price: discountedUnitPrice(price),
           },
         ];
       }),
@@ -169,11 +180,14 @@ export class SalesController {
               producto: true,
               precio_canal: {
                 where: {
-                  canal: { in: ['TIENDA', 'WEB'] },
+                  canal: 'TIENDA',
                   desde: { lte: now },
                   OR: [{ hasta: null }, { hasta: { gt: now } }],
                 },
                 orderBy: { desde: 'desc' },
+              },
+              disponibilidad_canal: {
+                where: { canal: 'TIENDA', ubicacion_id: input.locationId, habilitada: true },
               },
             },
           },
@@ -183,12 +197,20 @@ export class SalesController {
         const inventory = inventories.find((row) => row.variante_id === item.variantId);
         if (!inventory)
           throw new BadRequestException('Una prenda no pertenece al inventario seleccionado.');
-        const prices = inventory.variante.precio_canal;
-        const price =
-          prices.find((row) => row.canal === 'TIENDA') ?? prices.find((row) => row.canal === 'WEB');
+        if (!inventory.variante.activa || inventory.variante.producto.estado !== 'PUBLICADO')
+          throw new BadRequestException(
+            `La prenda ${inventory.variante.sku} ya no está publicada.`,
+          );
+        if (!inventory.variante.disponibilidad_canal.length)
+          throw new BadRequestException(
+            `La prenda ${inventory.variante.sku} no está habilitada para venta en esta ubicación.`,
+          );
+        const price = inventory.variante.precio_canal[0];
         if (!price)
-          throw new BadRequestException(`No hay precio vigente para ${inventory.variante.sku}.`);
-        const unit = Number(price.importe) * (1 - Number(price.descuento_pct) / 100);
+          throw new BadRequestException(
+            `No hay precio TIENDA vigente para ${inventory.variante.sku}.`,
+          );
+        const unit = discountedUnitPrice(price);
         return { item, inventory, unit, total: Number((unit * item.quantity).toFixed(2)) };
       });
       const total = Number(lines.reduce((sum, line) => sum + line.total, 0).toFixed(2));

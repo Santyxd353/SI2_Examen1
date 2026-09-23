@@ -392,8 +392,8 @@ export function CatalogScreen({
       <NativeStatusBar barStyle="dark-content" backgroundColor="#fbfaf6" />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" onPress={resetHome}>
-          <Text style={styles.logo}>vestidor°</Text>
-          <Text style={styles.logoSub}>REALIDAD AUMENTADA</Text>
+          <Text style={styles.logo}>lúmina°</Text>
+          <Text style={styles.logoSub}>MODA FEMENINA</Text>
         </Pressable>
         <View style={styles.headerActions}>
           <HeaderAction
@@ -471,14 +471,6 @@ export function CatalogScreen({
                 active={!category && !favoritesOnly}
                 onPress={resetHome}
               />
-              <CategoryTab
-                label="Mujer"
-                active={!category && favoritesOnly}
-                onPress={() => {
-                  setFavoritesOnly(false);
-                  onCategoryChange('');
-                }}
-              />
               {catalog.categories.map((item) => (
                 <CategoryTab
                   key={item.id}
@@ -494,20 +486,18 @@ export function CatalogScreen({
 
             <View style={styles.promo}>
               <View style={styles.promoCopy}>
-                <Text style={styles.promoBadge}>NUEVA EXPERIENCIA</Text>
-                <Text style={styles.promoTitle}>Tu estilo,{`\n`}en tus manos.</Text>
-                <Text style={styles.promoText}>Elige una prenda y pruébatela con la cámara.</Text>
+                <Text style={styles.promoBadge}>COLECCIÓN FEMENINA</Text>
+                <Text style={styles.promoTitle}>Vestidos y faldas,{`\n`}a tu manera.</Text>
+                <Text style={styles.promoText}>Explora prendas reales. La vista con cámara de vestidos es aproximada.</Text>
                 <Pressable
                   style={styles.promoButton}
                   onPress={() => {
-                    const product = catalog.products.find((item) =>
-                      item.variantes.some((variant) => !!variant.arImagePath),
-                    );
+                    const product = catalog.products.find((item) => item.tipoPrenda === 'Vestidos');
                     const variant = product && variantFor(product);
                     if (product && variant) onTryAr(product, variant);
                   }}
                 >
-                  <Text style={styles.promoButtonText}>Probar en AR →</Text>
+                  <Text style={styles.promoButtonText}>Ver vestido en AR →</Text>
                 </Pressable>
               </View>
               <View style={styles.promoArt}>
@@ -631,9 +621,11 @@ export function CatalogScreen({
                   ))}
                 </ScrollView>
                 <View style={styles.cardActions}>
-                  <Pressable style={styles.arButton} onPress={() => onTryAr(item, variant)}>
-                    <Text style={styles.arButtonText}>◇ AR</Text>
-                  </Pressable>
+                  {item.tipoPrenda === 'Vestidos' && (
+                    <Pressable style={styles.arButton} onPress={() => onTryAr(item, variant)}>
+                      <Text style={styles.arButtonText}>◇ AR aprox.</Text>
+                    </Pressable>
+                  )}
                   <Pressable
                     disabled={!available || commerceBusy}
                     style={[
@@ -930,9 +922,9 @@ function FilterSheet({
   );
 }
 
-const green = '#173e2a';
-const cream = '#fbfaf6';
-const line = '#e5e4dc';
+const green = '#63354e';
+const cream = '#fcf8f7';
+const line = '#eadde3';
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: cream },
@@ -1032,7 +1024,7 @@ const styles = StyleSheet.create({
     minHeight: 176,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#e7eadc',
+    backgroundColor: '#f7e9ef',
     flexDirection: 'row',
     marginBottom: 18,
   },
@@ -1068,7 +1060,7 @@ const styles = StyleSheet.create({
     flex: 0.8,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#c8d1b9',
+    backgroundColor: '#e6c4d2',
     borderTopLeftRadius: 90,
     borderBottomLeftRadius: 90,
     marginLeft: -24,

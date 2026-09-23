@@ -3,8 +3,8 @@ from pathlib import Path
 from geometry import infer_measurements
 
 ROOT=Path(__file__).resolve().parents[2]
-MODEL=ROOT/'.local/worker/pose_landmarker.task'
-BLENDER=ROOT/'.local/worker/blender-4.5.3-windows-x64/blender.exe'
+MODEL=Path(os.getenv('POSE_MODEL_PATH',ROOT/'.local/worker/pose_landmarker.task')).resolve()
+BLENDER=Path(os.getenv('BLENDER_PATH',ROOT/'.local/worker/blender-4.5.3-windows-x64/blender.exe')).resolve()
 def export(parameters,out,reference=False):
     if not BLENDER.is_file():raise ValueError("BLENDER_NO_DISPONIBLE")
     config=out/'export.json'
@@ -45,7 +45,8 @@ def main():
         out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=True)
         export({'height':1.7},out,True)
         (out/'metadata.json').write_text(json.dumps({'reference':True,'plantilla':'g18-1','licencia':'Geometría propia Grupo 18','height':1.7}),encoding='utf8')
-        return {'ok':True,'reference_file':str(out/'reference.glb'),'garment_file':str(out/'garment.glb')}
+        return {'ok':True,'reference_file':str(out/'reference.glb'),'garment_file':str(out/'garment.glb'),
+            'dress_file':str(out/'dress-M.glb'),'skirt_file':str(out/'skirt-M.glb')}
     if len(sys.argv)==3 and sys.argv[1]=='--job':
         return generate(json.loads(Path(sys.argv[2]).read_text(encoding='utf8')))
     raise ValueError('ARGUMENTOS_INVALIDOS')

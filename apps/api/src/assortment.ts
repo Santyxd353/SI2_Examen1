@@ -22,7 +22,7 @@ export async function assignAssortment(
   });
   await tx.disponibilidad_canal.createMany({
     data: pairs.flatMap((pair) =>
-      (['WEB', 'APP'] as const).map((canal) => ({
+      (['WEB', 'APP', 'TIENDA'] as const).map((canal) => ({
         ...pair,
         canal,
         habilitada: true,

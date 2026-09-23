@@ -52,6 +52,7 @@ export type Product = {
   id: string;
   categoria_id: string;
   nombre: string;
+  tipoPrenda?: string;
   descripcion: string;
   material: string;
   marca?: string | null;

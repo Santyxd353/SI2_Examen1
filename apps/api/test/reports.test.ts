@@ -172,6 +172,9 @@ test('analítica genera y persiste predicciones y recomendaciones explicables', 
   expect(response.status).toBe(201);
   expect(response.body.status).toBe('COMPLETADA');
   expect(response.body.predictions).toHaveLength(2);
+  expect(new Date(response.body.predictions[0].fecha).getTime()).toBeGreaterThan(
+    new Date('2026-02-28T23:59:59.999Z').getTime(),
+  );
   expect(response.body.recommendations).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ tipo: 'REPOSICION', destino_id: locationId }),
@@ -223,4 +226,70 @@ test('cliente sin permiso no puede consultar reportes ni ejecutar analítica', a
         .send({ from: '2026-01-01', to: '2026-02-28', horizonWeeks: 2 })
     ).status,
   ).toBe(403);
+});
+
+test('detecta una venta semanal extrema usando semanas anteriores como referencia', async () => {
+  const variant = await db.variante.findUniqueOrThrow({ where: { id: variantId }, include: { producto: true } });
+  const createdAt = new Date(Date.UTC(2026, 1, 9, 12));
+  const order = await db.pedido.create({
+    data: {
+      usuario_id: adminId,
+      vendedor_id: adminId,
+      ubicacion_id: locationId,
+      numero: `REP-ATIPICA-${stamp}`,
+      canal: 'TIENDA',
+      moneda: 'BOB',
+      subtotal: 8000,
+      descuento: 0,
+      impuesto: 0,
+      entrega: 0,
+      total: 8000,
+      direccion_snapshot: {},
+      reglas_snapshot: {},
+      estado: 'CONFIRMADO',
+      creado_en: createdAt,
+      idempotencia: randomUUID(),
+    },
+  });
+  await db.detalle_pedido.create({
+    data: {
+      pedido_id: order.id,
+      variante_id: variantId,
+      sku_snapshot: variant.sku,
+      descripcion_snapshot: variant.producto.nombre,
+      talla_snapshot: variant.talla,
+      color_snapshot: variant.color,
+      cantidad: 80,
+      precio_unitario: 100,
+      descuento: 0,
+      total_linea: 8000,
+    },
+  });
+  await db.pago.create({
+    data: {
+      pedido_id: order.id,
+      proveedor: 'PRUEBA',
+      referencia: `PAGO-ATIPICA-${stamp}`,
+      idempotencia: randomUUID(),
+      monto: 8000,
+      moneda: 'BOB',
+      estado: 'CONFIRMADO',
+      creado_en: createdAt,
+      confirmado_en: createdAt,
+    },
+  });
+
+  const response = await request(app.getHttpServer())
+    .post('/api/analytics/run')
+    .auth(adminToken, { type: 'bearer' })
+    .send({ from: '2026-01-01', to: '2026-02-28', location: locationId, horizonWeeks: 2 });
+  expect(response.status).toBe(201);
+  expect(response.body.anomalies).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        indicador: 'VENTA_SEMANAL_ATIPICA',
+        evidencia: expect.objectContaining({ cantidad: 80 }),
+      }),
+    ]),
+  );
 });

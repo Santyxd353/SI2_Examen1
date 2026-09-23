@@ -296,7 +296,12 @@ test('detalle, conteo físico y alertas de stock mínimo quedan trazables', asyn
   const invalidCount = await request(app.getHttpServer())
     .post(`/api/locations/${locationId}/inventory/counts`)
     .auth(sellerToken, { type: 'bearer' })
-    .send({ varianteId: variantId, conteoObservado: 5, motivo: 'Conteo de control' });
+    .send({
+      varianteId: variantId,
+      conteoObservado: 5,
+      expectedVersion: row.version,
+      motivo: 'Conteo de control',
+    });
   expect(invalidCount.status).toBe(400);
   await db.inventario.update({
     where: { variante_id_ubicacion_id: { variante_id: variantId, ubicacion_id: locationId } },
@@ -306,7 +311,12 @@ test('detalle, conteo físico y alertas de stock mínimo quedan trazables', asyn
   const count = await request(app.getHttpServer())
     .post(`/api/locations/${locationId}/inventory/counts`)
     .auth(sellerToken, { type: 'bearer' })
-    .send({ varianteId: variantId, conteoObservado: 5, motivo: 'Conteo de control' });
+    .send({
+      varianteId: variantId,
+      conteoObservado: 5,
+      expectedVersion: row.version,
+      motivo: 'Conteo de control',
+    });
   expect(count.status).toBe(201);
   expect(count.body.fisico).toBe(5);
 
@@ -318,6 +328,153 @@ test('detalle, conteo físico y alertas de stock mínimo quedan trazables', asyn
       expect.objectContaining({ tipo: 'CONTEO', deltaFisico: -2, conteoObservado: 5 }),
     ]),
   );
+});
+
+test('el conteo exige la versión consultada y rechaza un saldo que cambió antes de confirmar', async () => {
+  const location = await db.ubicacion.create({
+    data: { nombre: `Conteo concurrente ${stamp}`, tipo: 'ALMACEN', activa: true },
+  });
+  const inventory = await db.inventario.create({
+    data: {
+      ubicacion_id: location.id,
+      variante_id: variantId,
+      fisico: 10,
+      reservado: 0,
+      comprometido: 0,
+      version: 0,
+    },
+  });
+  const withoutVersion = await request(app.getHttpServer())
+    .post(`/api/locations/${location.id}/inventory/counts`)
+    .auth(adminToken, { type: 'bearer' })
+    .send({ varianteId: variantId, conteoObservado: 10, motivo: 'Conteo sin versión observada' });
+  expect(withoutVersion.status).toBe(400);
+
+  const observed = await request(app.getHttpServer())
+    .get(`/api/locations/${location.id}/inventory`)
+    .auth(adminToken, { type: 'bearer' });
+  const adjustment = await request(app.getHttpServer())
+    .post(`/api/locations/${location.id}/inventory/adjustments`)
+    .auth(adminToken, { type: 'bearer' })
+    .send({ varianteId: variantId, delta: -2, motivo: 'Salida posterior a la consulta' });
+  expect(adjustment.status).toBe(201);
+  const stale = await request(app.getHttpServer())
+    .post(`/api/locations/${location.id}/inventory/counts`)
+    .auth(adminToken, { type: 'bearer' })
+    .send({
+      varianteId: variantId,
+      conteoObservado: 10,
+      expectedVersion: observed.body[0].version,
+      motivo: 'Conteo con saldo anterior',
+    });
+  expect(stale.status).toBe(409);
+  expect((await db.inventario.findUniqueOrThrow({ where: { id: inventory.id } })).fisico).toBe(8);
+  expect(
+    await db.movimiento_stock.count({ where: { inventario_id: inventory.id, tipo: 'CONTEO' } }),
+  ).toBe(0);
+
+  const refreshed = await request(app.getHttpServer())
+    .get(`/api/locations/${location.id}/inventory`)
+    .auth(adminToken, { type: 'bearer' });
+  const confirmed = await request(app.getHttpServer())
+    .post(`/api/locations/${location.id}/inventory/counts`)
+    .auth(adminToken, { type: 'bearer' })
+    .send({
+      varianteId: variantId,
+      conteoObservado: 7,
+      expectedVersion: refreshed.body[0].version,
+      motivo: 'Conteo revisado tras la salida',
+    });
+  expect(confirmed.status).toBe(201);
+  expect(confirmed.body.fisico).toBe(7);
+  expect(
+    await db.movimiento_stock.count({ where: { inventario_id: inventory.id, tipo: 'CONTEO' } }),
+  ).toBe(1);
+});
+
+async function waitForBlockedRequest(blockerPid: number) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const rows = await db.$queryRaw<{ blocked: boolean }[]>`
+      SELECT EXISTS(SELECT 1 FROM pg_stat_activity
+        WHERE datname=current_database() AND ${blockerPid}::int=ANY(pg_blocking_pids(pid))) AS blocked`;
+    if (rows[0].blocked) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('La operación no alcanzó el bloqueo de la ubicación.');
+}
+
+test.each(['stock', 'hija'] as const)(
+  'desactivar revalida %s concurrente después de obtener el bloqueo',
+  async (kind) => {
+    const location = await db.ubicacion.create({
+      data: { nombre: `Cierre concurrente ${kind} ${stamp}`, tipo: 'ALMACEN', activa: true },
+    });
+    const inventory = await db.inventario.create({
+      data: {
+        ubicacion_id: location.id,
+        variante_id: variantId,
+        fisico: 0,
+        reservado: 0,
+        comprometido: 0,
+        version: 0,
+      },
+    });
+    let closing: Promise<request.Response> | undefined;
+    try {
+      await db.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`SELECT id FROM ubicacion WHERE id=${location.id}::uuid FOR UPDATE`;
+          const [connection] = await tx.$queryRaw<
+            { pid: number }[]
+          >`SELECT pg_backend_pid() AS pid`;
+          closing = request(app.getHttpServer())
+            .patch(`/api/locations/${location.id}`)
+            .auth(adminToken, { type: 'bearer' })
+            .send({ activa: false })
+            .then((response) => response);
+          await waitForBlockedRequest(connection.pid);
+          if (kind === 'stock') {
+            await tx.inventario.update({
+              where: { id: inventory.id },
+              data: { fisico: 1, version: { increment: 1 } },
+            });
+          } else {
+            await tx.ubicacion.create({
+              data: {
+                padre_id: location.id,
+                nombre: `Hija concurrente ${stamp}`,
+                tipo: 'TIENDA',
+                activa: true,
+              },
+            });
+          }
+        },
+        { timeout: 10000 },
+      );
+    } finally {
+      if (closing) await closing;
+    }
+    expect((await closing!).status).toBe(400);
+    expect((await db.ubicacion.findUniqueOrThrow({ where: { id: location.id } })).activa).toBe(
+      true,
+    );
+  },
+);
+
+test('no reactiva una ubicación dependiente de un padre desactivado', async () => {
+  const parent = await db.ubicacion.create({
+    data: { nombre: `Padre inactivo ${stamp}`, tipo: 'ALMACEN', activa: false },
+  });
+  const child = await db.ubicacion.create({
+    data: { nombre: `Hija inactiva ${stamp}`, tipo: 'TIENDA', padre_id: parent.id, activa: false },
+  });
+  const response = await request(app.getHttpServer())
+    .patch(`/api/locations/${child.id}`)
+    .auth(adminToken, { type: 'bearer' })
+    .send({ activa: true });
+  expect(response.status).toBe(400);
+  expect((await db.ubicacion.findUniqueOrThrow({ where: { id: child.id } })).activa).toBe(false);
 });
 
 test('un cliente no puede consultar ni modificar ubicaciones', async () => {

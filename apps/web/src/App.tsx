@@ -123,6 +123,7 @@ export function App() {
     [catalogLocation, setCatalogLocation] = useState(''),
     [query, setQuery] = useState(''),
     [brand, setBrand] = useState(''),
+    [category, setCategory] = useState(''),
     [color, setColor] = useState(''),
     [size, setSize] = useState(''),
     [catalogVersion, setCatalogVersion] = useState(0),
@@ -133,7 +134,7 @@ export function App() {
   const [avatars, setAvatars] = useState<Avatar[]>([]),
     [jobs, setJobs] = useState<Job[]>([]),
     [bodyUrl, setBodyUrl] = useState('/assets/reference.glb'),
-    [garmentUrl, setGarmentUrl] = useState<string | null>('/assets/garment.glb');
+    [garmentUrl, setGarmentUrl] = useState<string | null>('/assets/dress-M.glb');
   const [current, setCurrent] = useState<Avatar | null>(null),
     [session, setSession] = useState<string | null>(null),
     [notice, setNotice] = useState('');
@@ -157,6 +158,7 @@ export function App() {
         if (catalogLocation) params.set('location', catalogLocation);
         if (query.trim()) params.set('search', query.trim());
         if (brand) params.set('brand', brand);
+        if (category) params.set('category', category);
         if (color) params.set('color', color);
         if (size) params.set('size', size);
         void api(`/catalog${params.size ? `?${params}` : ''}`)
@@ -176,7 +178,7 @@ export function App() {
       active = false;
       clearTimeout(timer);
     };
-  }, [catalogLocation, query, brand, color, size, catalogVersion]);
+  }, [catalogLocation, query, brand, category, color, size, catalogVersion]);
   useEffect(() => {
     const epoch = accountEpoch.current;
     refresh()
@@ -307,7 +309,7 @@ export function App() {
       setError('');
       setCurrent(null);
       setBodyUrl('/assets/reference.glb');
-      setGarmentUrl('/assets/garment.glb');
+      setGarmentUrl('/assets/dress-M.glb');
       setPage('catalogo');
     } catch (e) {
       if (epoch === accountEpoch.current) setError((e as Error).message);
@@ -389,7 +391,7 @@ export function App() {
       if (current?.id === a.id) {
         setCurrent(null);
         setBodyUrl('/assets/reference.glb');
-        setGarmentUrl('/assets/garment.glb');
+        setGarmentUrl('/assets/dress-M.glb');
       }
       await reload();
       if (epoch !== viewEpoch.current) return;
@@ -466,12 +468,12 @@ export function App() {
         Saltar al contenido
       </a>
       <div className="announcement">
-        UNA NUEVA FORMA DE ELEGIR TU ROPA <span>Grupo 18 · Colección de desarrollo</span>
+        MODA FEMENINA · VESTIDOR VIRTUAL <span>Lúmina · Grupo 18</span>
       </div>
       <header>
         <button className="wordmark" onClick={() => setPage('catalogo')}>
-          vestidor<span>°</span>
-          <small>ESTUDIO VIRTUAL</small>
+          lúmina<span>°</span>
+          <small>MODA FEMENINA · VESTIDOR 3D</small>
         </button>
         <nav aria-label="Principal">
           <button
@@ -539,7 +541,7 @@ export function App() {
         <div className="breadcrumbs">
           Inicio <ChevronRight size={12} />{' '}
           {page === 'catalogo'
-            ? 'Colección / Esenciales'
+            ? 'Colección / Moda femenina'
             : page === 'avatar'
               ? 'Tu espacio / Mi avatar'
               : page === 'admin'
@@ -573,7 +575,7 @@ export function App() {
             <section className="hero">
               <div className="hero-copy">
                 <div className="eyebrow">
-                  <span /> TU ESTILO, DESDE OTRA PERSPECTIVA
+                  <span /> VESTIDOS Y FALDAS PARA EXPRESAR TU ESTILO
                 </div>
                 <h1>
                   Primero imagínalo.
@@ -581,8 +583,8 @@ export function App() {
                   <em>Después, pruébatelo.</em>
                 </h1>
                 <p>
-                  Descubre cómo se ve una prenda sobre tu propio avatar. Explora, gira y encuentra
-                  tu siguiente esencial.
+                  Explora vestidos y faldas de marcas reales. Crea tu avatar a partir de fotos de
+                  cuerpo completo y descubre una vista 3D aproximada de cada prenda.
                 </p>
                 <button className="primary" onClick={openAvatar}>
                   Crear mi avatar <ArrowUpRight size={20} />
@@ -614,7 +616,7 @@ export function App() {
                 <div className="model-info">
                   <div>
                     <small>{current ? 'TU VESTIDOR' : 'EXPLORA EL VESTIDOR'}</small>
-                    <b>{current ? 'Avatar · versión ' + current.version : 'Camiseta esencial'}</b>
+                    <b>{current ? 'Avatar · versión ' + current.version : 'Vestido de referencia'}</b>
                     <span>
                       {current
                         ? 'Representación corporal aproximada'
@@ -630,12 +632,21 @@ export function App() {
             <section className="collection">
               <div className="section-top">
                 <div className="section-title">
-                  <span className="eyebrow">COLECCIÓN 01</span>
+                  <span className="eyebrow">LA COLECCIÓN LÚMINA</span>
                   <h2>
-                    Esenciales para todos los días<span> ({filtered.length})</span>
+                    Vestidos y faldas para ti<span> ({filtered.length})</span>
                   </h2>
                 </div>
                 <div className="catalog-filters">
+                  <label className="location-filter">
+                    <span>Tipo de prenda</span>
+                    <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                      <option value="">Vestidos y faldas</option>
+                      {categories.map((option) => (
+                        <option value={option.id} key={option.id}>{option.nombre}</option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="location-filter">
                     <span>Disponibilidad</span>
                     <select
@@ -688,11 +699,12 @@ export function App() {
                       onChange={(e) => setQuery(e.target.value)}
                     />
                   </label>
-                  {(catalogLocation || brand || color || size || query) && (
+                  {(catalogLocation || category || brand || color || size || query) && (
                     <button
                       className="clear-catalog-filters"
                       onClick={() => {
                         setCatalogLocation('');
+                        setCategory('');
                         setBrand('');
                         setColor('');
                         setSize('');
@@ -717,7 +729,7 @@ export function App() {
                       <div className={'product-image tone-' + i}>
                         <span className="product-badge">
                           <Shirt size={12} />{' '}
-                          {v?.modeloId ? 'Disponible en 3D' : 'Colección de desarrollo'}
+                          {v?.modeloId ? 'Vista 3D referencial' : 'Moda femenina'}
                         </span>
                         {activeImage ? (
                           <img
@@ -783,7 +795,7 @@ export function App() {
                         </button>
                       </div>
                       <small className="stock">
-                        {v?.disponible} disponibles · precio de desarrollo
+                        {v?.disponible} unidades de demostración · precio académico
                       </small>
                       <button
                         className="cart-add"
@@ -815,9 +827,14 @@ export function App() {
               </div>
               {!catalogLoading && filtered.length === 0 && (
                 <div className="empty">
-                  No hay prendas para esa combinación de sucursal, marca, color y talla.
+                  No hay prendas para esa combinación de tipo, marca, color y talla.
                 </div>
               )}
+              <p className="catalog-disclaimer">
+                Catálogo académico con referencias de marcas reales. Los precios y las existencias son
+                de demostración; las siluetas 3D muestran una aproximación, no el ajuste exacto de la prenda.
+                Imágenes de los fabricantes. Sin afiliación comercial.
+              </p>
             </section>
             <section className="how">
               <div>
@@ -1031,8 +1048,8 @@ export function App() {
         )}
       </main>
       <footer>
-        <span className="footer-logo">vestidor°</span>
-        <p>Tu ropa. Tu perspectiva.</p>
+        <span className="footer-logo">lúmina°</span>
+        <p>Moda femenina. Tu perspectiva.</p>
         <span>GRUPO 18 · PROYECTO ACADÉMICO</span>
       </footer>
       {authOpen && (
@@ -1047,7 +1064,7 @@ export function App() {
             <button className="modal-close" aria-label="Cerrar" onClick={() => setAuthOpen(false)}>
               <X size={20} />
             </button>
-            <span className="eyebrow">BIENVENIDO A VESTIDOR</span>
+            <span className="eyebrow">BIENVENIDA A LÚMINA</span>
             <h2 id="auth-title">{register ? 'Crea tu espacio.' : 'Qué bueno verte.'}</h2>
             <p>
               {register

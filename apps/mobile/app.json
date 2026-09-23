@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Vestidor AR",
+    "name": "Lúmina · Moda femenina",
     "slug": "vestidor-ar-grupo18",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -22,14 +22,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Vestidor AR usa la cámara para colocar prendas sobre tu imagen. El video no se almacena."
+          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de vestidos sobre tu imagen. El video no se almacena."
         }
       ],
       [
         "expo-secure-store",
         {
           "configureAndroidBackup": true,
-          "faceIDPermission": "Permite que Vestidor AR acceda de forma segura a tu sesión."
+          "faceIDPermission": "Permite que Lúmina acceda de forma segura a tu sesión."
         }
       ]
     ],

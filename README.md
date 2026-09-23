@@ -1,8 +1,12 @@
 # Vestidor 3D · Grupo 18
 
+**Instancia publicada:** [Lúmina · moda femenina y vestidor 3D](https://172-191-104-91.sslip.io/). El catálogo inicial reúne 12 vestidos y faldas de Nike, adidas, Levi's y PUMA. Consulta [alcance, fuentes y límites del catálogo](docs/CATALOGO_LUMINA.md).
+
 Primera entrega ejecutable basada en el documento actualizado [Plataforma_Vestidor3D_Grupo18.docx](docs/Plataforma_Vestidor3D_Grupo18.docx), también disponible en [PDF](docs/Plataforma_Vestidor3D_Grupo18.pdf). La línea base estructurada se conserva en [docs/linea-base.json](docs/linea-base.json) y la versión original del Word permanece en el historial de Git. El estado requisito por requisito está en [docs/AUDITORIA_ALCANCE_2026-09-20.md](docs/AUDITORIA_ALCANCE_2026-09-20.md). Esta versión todavía no representa el sistema final.
 
 Repositorio oficial: [Santyxd353/SI2_Examen1](https://github.com/Santyxd353/SI2_Examen1). Rama principal: `main`.
+
+Despliegue preparado para Azure Container Apps, PostgreSQL Flexible Server, Azure Files y Azure Container Registry. Instrucciones: [docs/DESPLIEGUE_AZURE.md](docs/DESPLIEGUE_AZURE.md).
 
 Para obtener el proyecto:
 

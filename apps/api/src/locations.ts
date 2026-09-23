@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ConflictException,
   Delete,
   ForbiddenException,
   Get,
@@ -59,6 +60,14 @@ export async function requireLocationScope(db: Db, user: Identity, locationId: s
   if (!assignment) throw new ForbiddenException('No tienes acceso a esta ubicación.');
 }
 
+async function lockActiveLocations(tx: Prisma.TransactionClient, ids: string[]) {
+  const uniqueIds = [...new Set(ids)].sort();
+  const rows = await tx.$queryRaw<{ id: string; activa: boolean }[]>`
+    SELECT id, activa FROM ubicacion WHERE id=ANY(${uniqueIds}::uuid[]) ORDER BY id FOR SHARE`;
+  if (rows.length !== uniqueIds.length || rows.some((row) => !row.activa))
+    throw new NotFoundException('La ubicación no existe o está inactiva.');
+}
+
 @Controller('locations')
 @UseGuards(AuthGuard)
 export class LocationsController {
@@ -92,11 +101,10 @@ export class LocationsController {
   async create(@Req() req: AuthRequest, @Body() body: unknown) {
     requirePermission(req.user, 'ubicaciones:gestionar');
     const data = locationInput.parse(body);
-    if (data.padreId) {
-      const parent = await this.db.ubicacion.findUnique({ where: { id: data.padreId } });
-      if (!parent?.activa) throw new BadRequestException('La ubicación superior no está activa.');
-    }
     return this.db.$transaction(async (tx) => {
+      // Serialize hierarchy edits; the row lock also coordinates with stock writers.
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('vestidor18:ubicacion:jerarquia', 0))`;
+      if (data.padreId) await lockActiveLocations(tx, [data.padreId]);
       const location = await tx.ubicacion.create({
         data: {
           nombre: data.nombre,
@@ -130,41 +138,47 @@ export class LocationsController {
       .parse(body);
     if (data.padreId === id)
       throw new BadRequestException('Una ubicación no puede contenerse a sí misma.');
-    const found = await this.db.ubicacion.findUnique({ where: { id } });
-    if (!found) throw new NotFoundException('Ubicación no encontrada.');
-    if (data.padreId) {
-      let parent = await this.db.ubicacion.findFirst({
-        where: { id: data.padreId, activa: true },
-        select: { id: true, padre_id: true },
-      });
-      if (!parent) throw new BadRequestException('La ubicación superior no está activa.');
-      while (parent?.padre_id) {
-        if (parent.padre_id === id)
-          throw new BadRequestException('La jerarquía de ubicaciones no puede formar un ciclo.');
-        parent = await this.db.ubicacion.findUnique({
-          where: { id: parent.padre_id },
+    z.string().uuid().parse(id);
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('vestidor18:ubicacion:jerarquia', 0))`;
+      await tx.$queryRaw`SELECT id FROM ubicacion WHERE id=${id}::uuid FOR UPDATE`;
+      const found = await tx.ubicacion.findUnique({ where: { id } });
+      if (!found) throw new NotFoundException('Ubicación no encontrada.');
+      const effectiveParentId = data.padreId === undefined ? found.padre_id : data.padreId;
+      if (effectiveParentId && (data.padreId !== undefined || data.activa === true)) {
+        let parent = await tx.ubicacion.findFirst({
+          where: { id: effectiveParentId, activa: true },
           select: { id: true, padre_id: true },
         });
+        if (!parent) throw new BadRequestException('La ubicación superior no está activa.');
+        while (parent?.padre_id) {
+          if (parent.padre_id === id)
+            throw new BadRequestException('La jerarquía de ubicaciones no puede formar un ciclo.');
+          parent = await tx.ubicacion.findUnique({
+            where: { id: parent.padre_id },
+            select: { id: true, padre_id: true },
+          });
+        }
       }
-    }
-    if (data.activa === false && found.activa) {
-      const [stock, children] = await Promise.all([
-        this.db.inventario.count({
-          where: {
-            ubicacion_id: id,
-            OR: [{ fisico: { gt: 0 } }, { reservado: { gt: 0 } }, { comprometido: { gt: 0 } }],
-          },
-        }),
-        this.db.ubicacion.count({ where: { padre_id: id, activa: true } }),
-      ]);
-      if (stock)
-        throw new BadRequestException(
-          'Transfiere o ajusta a cero todas las existencias antes de desactivar la ubicación.',
-        );
-      if (children)
-        throw new BadRequestException('Desactiva o reasigna primero las ubicaciones dependientes.');
-    }
-    return this.db.$transaction(async (tx) => {
+      if (data.activa === false && found.activa) {
+        const [stock, children] = await Promise.all([
+          tx.inventario.count({
+            where: {
+              ubicacion_id: id,
+              OR: [{ fisico: { gt: 0 } }, { reservado: { gt: 0 } }, { comprometido: { gt: 0 } }],
+            },
+          }),
+          tx.ubicacion.count({ where: { padre_id: id, activa: true } }),
+        ]);
+        if (stock)
+          throw new BadRequestException(
+            'Transfiere o ajusta a cero todas las existencias antes de desactivar la ubicación.',
+          );
+        if (children)
+          throw new BadRequestException(
+            'Desactiva o reasigna primero las ubicaciones dependientes.',
+          );
+      }
       const location = await tx.ubicacion.update({
         where: { id },
         data: {
@@ -347,6 +361,7 @@ export class LocationsController {
       throw new NotFoundException('Ubicación o variante no encontrada.');
     return this.db.$transaction(
       async (tx) => {
+        await lockActiveLocations(tx, [data.origenId, data.destinoId]);
         const source = await tx.inventario.findUnique({
           where: {
             variante_id_ubicacion_id: {
@@ -427,6 +442,7 @@ export class LocationsController {
       .object({
         varianteId: z.string().uuid(),
         conteoObservado: z.number().int().min(0).max(1000000),
+        expectedVersion: z.number().int().min(0),
         motivo: z.string().trim().min(5).max(400),
       })
       .strict()
@@ -438,9 +454,14 @@ export class LocationsController {
     if (!location || !variant) throw new NotFoundException('Ubicación o variante no encontrada.');
     return this.db.$transaction(
       async (tx) => {
+        await lockActiveLocations(tx, [id]);
         let inventory = await tx.inventario.findUnique({
           where: { variante_id_ubicacion_id: { variante_id: data.varianteId, ubicacion_id: id } },
         });
+        if ((inventory?.version ?? 0) !== data.expectedVersion)
+          throw new ConflictException(
+            'El inventario cambió desde la consulta. Revisa el saldo actualizado y confirma nuevamente el conteo.',
+          );
         const previousPhysical = inventory?.fisico ?? 0;
         if (!inventory) {
           inventory = await tx.inventario.create({
@@ -459,11 +480,13 @@ export class LocationsController {
               'El conteo no puede ser menor que las unidades reservadas y comprometidas.',
             );
           const changed = await tx.inventario.updateMany({
-            where: { id: inventory.id, version: inventory.version },
+            where: { id: inventory.id, version: data.expectedVersion },
             data: { fisico: data.conteoObservado, version: { increment: 1 } },
           });
           if (changed.count !== 1)
-            throw new BadRequestException('El inventario cambió durante el conteo. Reintenta.');
+            throw new ConflictException(
+              'El inventario cambió durante el conteo. Revisa el saldo actualizado antes de confirmar.',
+            );
           inventory = await tx.inventario.findUniqueOrThrow({ where: { id: inventory.id } });
         }
         await tx.movimiento_stock.create({
@@ -558,6 +581,7 @@ export class LocationsController {
     ]);
     if (!location || !variant) throw new NotFoundException('Ubicación o variante no encontrada.');
     const updated = await this.db.$transaction(async (tx) => {
+      await lockActiveLocations(tx, [id]);
       let inventory = await tx.inventario.findUnique({
         where: { variante_id_ubicacion_id: { variante_id: data.varianteId, ubicacion_id: id } },
       });

@@ -1,0 +1,75 @@
+name: vestidor18
+
+services:
+  database:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vestidor18
+      POSTGRES_USER: vestidor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vestidor -d vestidor18"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.azure
+    image: vestidor18-app:local
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: 3018
+      DATABASE_URL: postgresql://vestidor:${POSTGRES_PASSWORD}@database:5432/vestidor18
+      JWT_SECRET: ${JWT_SECRET:?Configura JWT_SECRET}
+      WEB_ORIGIN: https://${PUBLIC_HOST:?Configura PUBLIC_HOST}
+      SERVE_WEB: "true"
+      WEB_ROOT: /app/dist/web
+      TRUST_PROXY: "1"
+      STORAGE_ROOT: /data/storage
+      PYTHON_PATH: /opt/venv/bin/python
+      POSE_MODEL_PATH: /opt/models/pose_landmarker.task
+      BLENDER_PATH: /usr/bin/blender
+      RUN_DB_SEED: "true"
+    volumes:
+      - application-data:/data
+    networks:
+      - internal
+
+  proxy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Configura PUBLIC_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  postgres-data:
+  application-data:
+  caddy-data:
+  caddy-config:

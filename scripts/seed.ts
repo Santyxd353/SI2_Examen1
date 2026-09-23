@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { seedWomen } from './seed-women';
 const db = new PrismaClient();
 export async function seed(client: PrismaClient = db) {
   const roles = ['Cliente', 'Administrador', 'Vendedor', 'Analista'];
@@ -127,7 +128,7 @@ export async function seed(client: PrismaClient = db) {
         },
       });
       const desde = new Date('2026-01-01T00:00:00Z');
-      for (const canal of ['WEB', 'APP']) {
+      for (const canal of ['WEB', 'APP', 'TIENDA']) {
         await client.precio_canal.upsert({
           where: { variante_id_canal_desde: { variante_id: variant.id, canal, desde } },
           update: {},
@@ -204,6 +205,7 @@ export async function seed(client: PrismaClient = db) {
       }
     }
   }
-  console.log('Semilla lista: roles, catálogo y existencias de desarrollo.');
+  await seedWomen(client);
+  console.log('Semilla lista: roles y catálogo de moda femenina.');
 }
 if (require.main === module) seed().finally(() => db.$disconnect());

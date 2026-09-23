@@ -216,16 +216,16 @@ export class CommercialAnalytics {
         where: {
           tipo_nombre_version: {
             tipo: 'ANOMALIA',
-            nombre: 'Desviación semanal',
-            version: '1.0',
+            nombre: 'Desviación contra historia semanal',
+            version: '1.1',
           },
         },
         update: {},
         create: {
           tipo: 'ANOMALIA',
-          nombre: 'Desviación semanal',
-          version: '1.0',
-          parametros: { desviaciones: 2, minimo_periodos: 3, explicable: true },
+          nombre: 'Desviación contra historia semanal',
+          version: '1.1',
+          parametros: { desviaciones: 2, minimo_periodos: 4, ventanas: 4, explicable: true },
           estado: 'ACTIVO',
         },
       }),
@@ -279,6 +279,7 @@ export class CommercialAnalytics {
       estado: string;
     }[] = [];
     const weeklyDemand = new Map<string, number>();
+    const firstForecast = addDays(to, ((8 - to.getUTCDay()) % 7) || 7);
     for (const rows of grouped.values()) {
       const recent = rows.slice(-4);
       const weights = recent.map((_, index) => index + 1);
@@ -290,37 +291,45 @@ export class CommercialAnalytics {
         recent.reduce((sum, row) => sum + (number(row.cantidad) - mean) ** 2, 0) / recent.length,
       );
       const base = rows[rows.length - 1];
-      weeklyDemand.set(`${base.variante_id}:${base.ubicacion_id}`, forecast);
+      const demandKey = `${base.variante_id}:${base.ubicacion_id}`;
+      weeklyDemand.set(demandKey, (weeklyDemand.get(demandKey) ?? 0) + forecast);
       for (let week = 1; week <= input.horizonWeeks; week++)
         predictions.push({
           ejecucion_id: demandRun.id,
           variante_id: base.variante_id,
           ubicacion_id: base.ubicacion_id,
           canal: base.canal,
-          fecha: addDays(new Date(base.semana), week * 7),
+          fecha: addDays(firstForecast, (week - 1) * 7),
           cantidad: Math.max(0, Number(forecast.toFixed(3))),
           limite_inferior: Math.max(0, Number((forecast - 1.96 * deviation).toFixed(3))),
           limite_superior: Math.max(0, Number((forecast + 1.96 * deviation).toFixed(3))),
         });
-      if (recent.length >= 3 && deviation > 0) {
-        for (const row of recent) {
-          const score = Math.abs(number(row.cantidad) - mean) / deviation;
-          if (score >= 2)
-            anomalies.push({
-              ejecucion_id: anomalyRun.id,
-              indicador: 'VENTA_SEMANAL_ATIPICA',
-              entidad_tipo: 'VARIANTE',
-              entidad_id: row.variante_id,
-              puntaje: Number(score.toFixed(4)),
-              evidencia: {
-                semana: new Date(row.semana).toISOString().slice(0, 10),
-                cantidad: number(row.cantidad),
-                promedio: Number(mean.toFixed(3)),
-                desviacion: Number(deviation.toFixed(3)),
-              },
-              estado: 'PENDIENTE',
-            });
-        }
+      for (let index = 4; index < rows.length; index++) {
+        const history = rows.slice(index - 4, index).map((row) => number(row.cantidad));
+        const expected = history.reduce((sum, quantity) => sum + quantity, 0) / history.length;
+        const historicDeviation = Math.sqrt(
+          history.reduce((sum, quantity) => sum + (quantity - expected) ** 2, 0) /
+            history.length,
+        );
+        const scale = Math.max(1, historicDeviation, Math.sqrt(expected));
+        const row = rows[index];
+        const score = Math.abs(number(row.cantidad) - expected) / scale;
+        if (score >= 2)
+          anomalies.push({
+            ejecucion_id: anomalyRun.id,
+            indicador: 'VENTA_SEMANAL_ATIPICA',
+            entidad_tipo: 'VARIANTE',
+            entidad_id: row.variante_id,
+            puntaje: Number(score.toFixed(4)),
+            evidencia: {
+              semana: new Date(row.semana).toISOString().slice(0, 10),
+              cantidad: number(row.cantidad),
+              promedio_historico: Number(expected.toFixed(3)),
+              desviacion_historica: Number(historicDeviation.toFixed(3)),
+              semanas_referencia: history.length,
+            },
+            estado: 'PENDIENTE',
+          });
       }
     }
     const inventories = await this.db.inventario.findMany({

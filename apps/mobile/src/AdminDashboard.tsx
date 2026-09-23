@@ -99,7 +99,7 @@ export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
       <NativeStatusBar barStyle="dark-content" backgroundColor="#fbfaf6" />
       <View style={styles.header}>
         <View>
-          <Text style={styles.logo}>vestidor°</Text>
+          <Text style={styles.logo}>lúmina°</Text>
           <Text style={styles.logoSub}>PANEL ADMINISTRADOR</Text>
         </View>
         <Pressable accessibilityRole="button" style={styles.avatar} onPress={onLogout}>

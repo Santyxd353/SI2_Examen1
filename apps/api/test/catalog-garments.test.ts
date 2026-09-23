@@ -120,6 +120,15 @@ test('cliente filtra talla, color y marca; prenda y fotos son comunes con stock 
   productId = created.body.id;
   expect(created.body.fotos).toBe(2);
   const firstLocation = await db.ubicacion.findFirstOrThrow({ where: { activa: true } });
+  const storePrices = await db.precio_canal.findMany({
+    where: { variante: { producto_id: productId }, canal: 'TIENDA' },
+  });
+  const storeAvailability = await db.disponibilidad_canal.findMany({
+    where: { variante: { producto_id: productId }, ubicacion_id: firstLocation.id, canal: 'TIENDA' },
+  });
+  expect(storePrices).toHaveLength(2);
+  expect(storeAvailability).toHaveLength(2);
+  expect(storeAvailability.every((policy) => policy.habilitada)).toBe(true);
   const path = `/api/catalog?location=${firstLocation.id}&brand=${encodeURIComponent(brand)}&color=Rosado&size=S`;
   const matching = await request(app.getHttpServer()).get(path);
   expect(matching.status).toBe(200);

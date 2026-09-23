@@ -3,14 +3,17 @@ import request from 'supertest';
 import { hash } from 'bcryptjs';
 import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { PNG } from 'pngjs';
+import { writeFile } from 'fs/promises';
 import { createApp } from '../src/app';
-import { removeStored } from '../src/storage';
+import { removeStored, storedPath } from '../src/storage';
 
 let app: INestApplication;
 let db: PrismaClient;
 let adminToken: string;
 let variantId: string;
 let resourceId: string | undefined;
+const rejectedResourceIds: string[] = [];
 let adminId: string;
 const stamp = Date.now();
 const previousStorageRoot = process.env.STORAGE_ROOT;
@@ -44,6 +47,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  for (const id of rejectedResourceIds) {
+    const resource = await db.recurso_catalogo.findUnique({ where: { id } });
+    if (resource) {
+      await db.recurso_catalogo.delete({ where: { id } });
+      await removeStored(resource.clave_objeto);
+    }
+  }
   if (resourceId) {
     const resource = await db.recurso_catalogo.findUnique({ where: { id: resourceId } });
     await db.recurso_catalogo.delete({ where: { id: resourceId } });
@@ -58,6 +68,80 @@ afterAll(async () => {
   await db?.$disconnect();
   if (previousStorageRoot === undefined) delete process.env.STORAGE_ROOT;
   else process.env.STORAGE_ROOT = previousStorageRoot;
+});
+
+function pngFixture(kind: 'transparent' | 'opaque' | 'one-pixel' | 'empty') {
+  const png = new PNG({ width: 256, height: 256 });
+  png.data.fill(255);
+  for (let y = 0; y < png.height; y++) {
+    for (let x = 0; x < png.width; x++) {
+      const background = x < 32 || x >= 224 || y < 32 || y >= 224;
+      if (
+        kind === 'empty' ||
+        (kind === 'transparent' && background) ||
+        (kind === 'one-pixel' && x === 0 && y === 0)
+      )
+        png.data[(y * png.width + x) * 4 + 3] = 0;
+    }
+  }
+  return PNG.sync.write(png);
+}
+
+test.each([
+  ['PNG truncado', () => pngFixture('transparent').subarray(0, 100)],
+  [
+    'PNG con CRC corrupto',
+    () => {
+      const bytes = pngFixture('transparent');
+      bytes[29] ^= 255;
+      return bytes;
+    },
+  ],
+  ['PNG opaco con canal alfa', () => pngFixture('opaque')],
+  ['PNG con un solo píxel transparente', () => pngFixture('one-pixel')],
+  ['PNG completamente transparente', () => pngFixture('empty')],
+] as const)('rechaza %s antes de guardar un recurso AR', async (_name, fixture) => {
+  const response = await request(app.getHttpServer())
+    .post('/api/catalog/ar-resources')
+    .auth(adminToken, { type: 'bearer' })
+    .field('varianteId', variantId)
+    .field('textoAlternativo', 'Prenda de prueba frontal')
+    .field('licencia', 'Geometría de prueba propia')
+    .attach('imagen', fixture(), { filename: 'prenda.png', contentType: 'image/png' });
+  if (response.body.id) rejectedResourceIds.push(response.body.id);
+  expect(response.status).toBe(400);
+  expect(response.body.id).toBeUndefined();
+});
+
+test('el catálogo entrega la categoría de la prenda como tipo explícito para AR', async () => {
+  const variant = await db.variante.findUniqueOrThrow({
+    where: { id: variantId },
+    include: { producto: { include: { categoria: true } } },
+  });
+  const response = await request(app.getHttpServer()).get('/api/catalog');
+  expect(response.status).toBe(200);
+  const product = response.body.products.find((item: { id: string }) => item.id === variant.producto_id);
+  expect(product.tipoPrenda).toBe(variant.producto.categoria.nombre);
+});
+
+test('publicar vuelve a validar el PNG y conserva el borrador si el archivo ya no sirve', async () => {
+  const upload = await request(app.getHttpServer())
+    .post('/api/catalog/ar-resources')
+    .auth(adminToken, { type: 'bearer' })
+    .field('varianteId', variantId)
+    .field('textoAlternativo', 'Prenda de prueba frontal')
+    .field('licencia', 'Geometría de prueba propia')
+    .attach('imagen', pngFixture('transparent'), { filename: 'prenda.png', contentType: 'image/png' });
+  expect(upload.status).toBe(201);
+  rejectedResourceIds.push(upload.body.id);
+  const resource = await db.recurso_catalogo.findUniqueOrThrow({ where: { id: upload.body.id } });
+  await writeFile(storedPath(resource.clave_objeto), pngFixture('opaque'));
+  const publish = await request(app.getHttpServer())
+    .patch(`/api/catalog/ar-resources/${resource.id}`)
+    .auth(adminToken, { type: 'bearer' })
+    .send({ estado: 'PUBLICADO' });
+  expect(publish.status).toBe(400);
+  expect((await db.recurso_catalogo.findUniqueOrThrow({ where: { id: resource.id } })).estado).toBe('BORRADOR');
 });
 
 test('imagen AR se carga como borrador y solo aparece en catálogo al publicarse', async () => {

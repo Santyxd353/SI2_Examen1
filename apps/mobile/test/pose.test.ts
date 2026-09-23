@@ -52,3 +52,21 @@ test('la imagen ilustrativa se ancla a hombros y cadera', () => {
   assert.ok(frame.top < torso.leftShoulder.y);
   assert.ok(frame.top + frame.height > torso.leftHip.y);
 });
+
+test('un PNG de vestido llega bajo la cadera sin cambiar el anclaje de hombros', () => {
+  const torso = projectTorso(pose, { width: 400, height: 800 });
+  assert.ok(torso);
+  const top = garmentImageFrame(torso, 'top');
+  const dress = garmentImageFrame(torso, 'dress');
+  assert.equal(dress.top, top.top);
+  assert.equal(dress.left + dress.width / 2, 200);
+  assert.ok(dress.top + dress.height >= 680);
+  assert.ok(top.top + top.height < 600);
+});
+
+test('el tipo AR se obtiene de una categoría reconocida, sin adivinar nombres comerciales', () => {
+  assert.equal(garmentKind('Vestidos'), 'dress');
+  assert.equal(garmentKind('Blusas'), 'top');
+  assert.equal(garmentKind('Esenciales'), 'unsupported');
+  assert.equal(garmentKind('Topacio'), 'unsupported');
+});

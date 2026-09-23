@@ -5,7 +5,7 @@ export type Torso = { leftShoulder: Point; rightShoulder: Point; leftHip: Point;
 export type Layout = { width: number; height: number };
 export type GarmentKind = 'top' | 'dress' | 'unsupported';
 
-export function garmentImageFrame(torso: Torso) {
+export function garmentImageFrame(torso: Torso, kind: Exclude<GarmentKind, 'unsupported'> = 'top') {
   const shoulderWidth = torso.rightShoulder.x - torso.leftShoulder.x;
   const shoulderY = (torso.leftShoulder.y + torso.rightShoulder.y) / 2;
   const hipY = (torso.leftHip.y + torso.rightHip.y) / 2;
@@ -15,13 +15,15 @@ export function garmentImageFrame(torso: Torso) {
     left: (torso.leftShoulder.x + torso.rightShoulder.x - width) / 2,
     top: shoulderY - torsoHeight * 0.08,
     width,
-    height: torsoHeight * 1.18,
+    height: torsoHeight * (kind === 'dress' ? 1.83 : 1.18),
   };
 }
 
-export function garmentKind(name: string): GarmentKind {
-  if (/vestido|dress/i.test(name)) return 'dress';
-  if (/blusa|camisa|camiseta|polo|top|chaqueta|polera|suéter|sudadera/i.test(name)) return 'top';
+export function garmentKind(categoryOrName: string): GarmentKind {
+  const type = categoryOrName.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/^(vestidos?|dress(?:es)?)(?:\b|$)/i.test(type)) return 'dress';
+  if (/^(blusas?|camisas?|camisetas?|polos?|tops?|chaquetas?|poleras?|sueter(?:es)?|sudaderas?)(?:\b|$)/i.test(type))
+    return 'top';
   return 'unsupported';
 }
 

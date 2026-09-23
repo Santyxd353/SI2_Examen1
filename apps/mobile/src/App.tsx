@@ -99,7 +99,7 @@ export function App() {
     return (
       <SafeAreaView style={styles.loading}>
         <ActivityIndicator color="#697b5e" />
-        <Text>Preparando Vestidor AR…</Text>
+        <Text>Preparando Lúmina…</Text>
       </SafeAreaView>
     );
 
@@ -277,8 +277,8 @@ function LoginScreen({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.loginContent}
       >
-        <Text style={styles.brand}>vestidor°</Text>
-        <Text style={styles.eyebrow}>APLICACIÓN MÓVIL</Text>
+        <Text style={styles.brand}>lúmina°</Text>
+        <Text style={styles.eyebrow}>MODA FEMENINA · APLICACIÓN MÓVIL</Text>
         <Text style={styles.loginTitle}>
           {mode === 'register' ? 'Crea tu cuenta de cliente.' : 'Tu probador, ahora en la cámara.'}
         </Text>
@@ -414,22 +414,21 @@ function ArCamera({
   const [trackingError, setTrackingError] = useState('');
   const [retry, setRetry] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
-  const kind = garmentKind(product.nombre);
   const nativeAvailable = isPoseAvailable();
   const arImageUrl = variant.arImagePath
     ? `${API_URL.replace(/\/api$/, '')}${variant.arImagePath}`
     : null;
-  const illustrativeSample =
-    !arImageUrl &&
-    product.id === '20000000-0000-4000-8000-000000000001' &&
-    variant.color.toLowerCase() === 'marfil';
+  const categoryKind = garmentKind(product.tipoPrenda || '');
+  const kind = categoryKind === 'unsupported'
+      ? garmentKind(product.nombre)
+      : categoryKind;
 
   useEffect(() => {
     if (
       !permission?.granted ||
       !cameraReady ||
       !nativeAvailable ||
-      (kind === 'unsupported' && !arImageUrl) ||
+      kind === 'unsupported' ||
       !layout.width ||
       !layout.height
     )
@@ -526,18 +525,12 @@ function ArCamera({
           })
         }
       >
-        {torso && arImageUrl && !imageFailed ? (
+        {torso && kind !== 'unsupported' && arImageUrl && !imageFailed ? (
           <Image
             source={{ uri: arImageUrl }}
             resizeMode="stretch"
-            style={[styles.garmentImage, garmentImageFrame(torso)]}
+            style={[styles.garmentImage, garmentImageFrame(torso, kind)]}
             onError={() => setImageFailed(true)}
-          />
-        ) : torso && illustrativeSample ? (
-          <Image
-            source={require('../assets/camiseta-marfil-muestra.png')}
-            resizeMode="stretch"
-            style={[styles.garmentImage, garmentImageFrame(torso)]}
           />
         ) : torso && kind !== 'unsupported' ? (
           <Svg width={layout.width} height={layout.height}>
@@ -575,8 +568,8 @@ function ArCamera({
           {variant.color} · Talla {variant.talla}
         </Text>
         <Text style={styles.cameraHint}>
-          {kind === 'unsupported' && !arImageUrl
-            ? 'Esta prenda aún no tiene visualización AR. Primero se admiten blusas y vestidos.'
+          {kind === 'unsupported'
+            ? 'Esta falda aún no tiene visualización con cámara. Usa el vestidor 3D de la web para ver una silueta aproximada.'
             : nativeAvailable
               ? tracking
               : 'Para detectar el cuerpo instala la development build de Android.'}
@@ -598,12 +591,10 @@ function ArCamera({
             <Text style={styles.primaryText}>Reintentar detección</Text>
           </Pressable>
         )}
-        {illustrativeSample && (
-          <Text style={styles.cameraPrivacy}>
-            Camiseta ilustrativa generada para la prueba; no es la foto del producto ni representa
-            el ajuste de la talla.
-          </Text>
-        )}
+        {!arImageUrl && <Text style={styles.cameraPrivacy}>Silueta de color referencial; no reproduce los detalles del vestido de marca.</Text>}
+        <Text style={styles.cameraHint}>
+          Visualización aproximada. No garantiza la talla ni el ajuste físico de la prenda.
+        </Text>
         <Text style={styles.cameraPrivacy}>
           La cámara se procesa en el dispositivo; las capturas temporales se eliminan.
         </Text>
@@ -613,7 +604,7 @@ function ArCamera({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f6f6f1' },
+  safe: { flex: 1, backgroundColor: '#fcf8f7' },
   loading: {
     flex: 1,
     alignItems: 'center',
@@ -695,7 +686,7 @@ const styles = StyleSheet.create({
   tryButtonText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   empty: { color: '#777e73', textAlign: 'center', padding: 30 },
   error: { color: '#a64d38', backgroundColor: '#fff0eb', padding: 11, marginTop: 10 },
-  login: { flex: 1, backgroundColor: '#f2f1eb' },
+  login: { flex: 1, backgroundColor: '#fcf8f7' },
   loginContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -708,7 +699,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 32,
     lineHeight: 38,
-    color: '#273025',
+    color: '#322631',
     marginBottom: 14,
   },
   input: {
@@ -741,7 +732,7 @@ const styles = StyleSheet.create({
   authTabTextActive: { color: '#303a2e' },
   primary: {
     minHeight: 50,
-    backgroundColor: '#303a2e',
+    backgroundColor: '#63354e',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,

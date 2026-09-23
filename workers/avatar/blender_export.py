@@ -1,5 +1,5 @@
 """Geometría propia de referencia; Blender exporta mallas en GLB con eje Y vertical."""
-import bpy, math, json, sys
+import bpy, math, json, struct, sys
 from pathlib import Path
 from mathutils import Vector
 
@@ -42,11 +42,40 @@ def rings(name,sections,mat,cap=False):
     for f in mesh.polygons:f.use_smooth=True
     return o
 
-def export(filepath,objects):
+def normalize_reference_extra(filepath,reference):
+    """Blender 3.x serializa booleanos de propiedades como 0/1; conserva boolean JSON."""
+    data=filepath.read_bytes()
+    magic,version,_=struct.unpack_from('<4sII',data,0)
+    json_length,json_type=struct.unpack_from('<II',data,12)
+    document=json.loads(data[20:20+json_length].rstrip(b' \t\r\n\0'))
+    body=next(node for node in document['nodes'] if node.get('name')=='Cuerpo_G18')
+    body.setdefault('extras',{})['reference']=bool(reference)
+    json_chunk=json.dumps(document,separators=(',',':'),ensure_ascii=False).encode('utf-8')
+    json_chunk+=b' '*((-len(json_chunk))%4)
+    remainder=data[20+json_length:]
+    total_length=20+len(json_chunk)+len(remainder)
+    filepath.write_bytes(
+        struct.pack('<4sII',magic,version,total_length)
+        +struct.pack('<II',len(json_chunk),json_type)
+        +json_chunk+remainder
+    )
+
+def export(filepath,objects,reference=None):
     bpy.ops.object.select_all(action='DESELECT')
     for o in objects:o.select_set(True)
     bpy.context.view_layer.objects.active=objects[0]
     bpy.ops.export_scene.gltf(filepath=str(filepath),export_format='GLB',use_selection=True,export_yup=True,export_extras=True)
+    if reference is not None:normalize_reference_extra(filepath,reference)
+
+def export_sizes(out,kind,objects):
+    for size,factor in [('S',.94),('M',1.0),('L',1.06)]:
+        for o in objects:
+            o.scale.x=factor
+            o.scale.y=factor
+        export(out/(kind+'-'+size+'.glb'),objects)
+    for o in objects:
+        o.scale.x=1
+        o.scale.y=1
 
 def build(parameters,out,reference=False):
     bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
@@ -92,7 +121,7 @@ def build(parameters,out,reference=False):
     bpy.ops.object.modifier_apply(modifier=smooth.name)
     decimate=fused.modifiers.new('Malla para visor','DECIMATE');decimate.ratio=.4
     bpy.ops.object.modifier_apply(modifier=decimate.name)
-    export(out/('reference.glb' if reference else 'avatar.glb'),[fused])
+    export(out/('reference.glb' if reference else 'avatar.glb'),[fused],reference)
     if reference:
         shirt=rings('Camiseta',[(.91,.195,.148),(.96,.195,.148),(1.07,.185,.14),(1.21,.201,.148),(1.34,.208,.139),(1.397,.19,.107),(1.445,.075,.072)],fabric)
         clothes=[shirt]
@@ -100,11 +129,25 @@ def build(parameters,out,reference=False):
             sleeve=limb('Manga',(side*.203,0,1.36),(side*.31,0,1.19),.093,fabric);clothes.append(sleeve)
         for o in clothes:o['plantilla']='g18-1'
         export(out/'garment.glb',clothes)
-        for size,factor in [('S',.94),('M',1.0),('L',1.06)]:
-            for o in clothes:
-                o.scale.x=factor;o.scale.y=factor
-                o.location.x=0 if o is shirt else o.location.x
-            export(out/('garment-'+size+'.glb'),clothes)
+        export_sizes(out,'garment',clothes)
+
+        # Siluetas propias y aproximadas. El visor colorea cada malla según la variante.
+        dress=rings('Vestido_femenino',[
+            (.57,.32,.24),(.66,.30,.225),(.78,.25,.19),(.87,.20,.155),
+            (1.02,.17,.13),(1.16,.205,.155),(1.30,.21,.155),
+            (1.39,.185,.13),(1.45,.085,.075)
+        ],fabric,cap=True)
+        dress['plantilla']='g18-1'
+        dress['tipo']='vestido_referencial'
+        export_sizes(out,'dress',[dress])
+
+        skirt=rings('Falda_femenina',[
+            (.55,.315,.24),(.63,.30,.225),(.75,.25,.19),
+            (.86,.205,.15),(.98,.17,.13),(1.025,.17,.13)
+        ],fabric,cap=True)
+        skirt['plantilla']='g18-1'
+        skirt['tipo']='falda_referencial'
+        export_sizes(out,'skirt',[skirt])
     return len(body)
 
 if __name__=='__main__':

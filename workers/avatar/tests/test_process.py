@@ -1,4 +1,4 @@
-import sys,json,struct,subprocess
+import os,sys,json,struct,subprocess
 from pathlib import Path
 import pytest
 from PIL import Image
@@ -33,3 +33,30 @@ def test_blender_exports_valid_gltf_with_personal_dimensions(tmp_path):
     assert all(a['max'][i]>=a['min'][i] for a in positions for i in range(3))
     assert not (tmp_path/'export.json').exists()
     assert any(node.get('extras',{}).get('reference') is False for node in document['nodes'])
+
+
+def test_demo_exports_distinct_dress_and_skirt_meshes_for_all_sizes(tmp_path):
+    result=subprocess.run(
+        [sys.executable,str(Path(__file__).resolve().parents[1]/'process.py'),'--demo',str(tmp_path)],
+        capture_output=True,text=True,check=True,
+    )
+    assert json.loads(result.stdout)['ok'] is True
+    for kind in ('dress','skirt'):
+        for size in ('S','M','L'):
+            path=tmp_path/f'{kind}-{size}.glb'
+            assert path.is_file()
+            data=path.read_bytes()
+            magic,version,length=struct.unpack('<4sII',data[:12])
+            assert (magic,version,length)==(b'glTF',2,len(data))
+            document=json.loads(data[20:20+struct.unpack('<I',data[12:16])[0]])
+            assert document['meshes']
+
+def test_worker_paths_honor_environment(tmp_path):
+    model=tmp_path/'pose.task';blender=tmp_path/'blender'
+    env=os.environ.copy()
+    env.update({'POSE_MODEL_PATH':str(model),'BLENDER_PATH':str(blender)})
+    result=subprocess.run(
+        [sys.executable,'-c','import process;print(process.MODEL);print(process.BLENDER)'],
+        cwd=Path(__file__).resolve().parents[1],env=env,capture_output=True,text=True,check=True,
+    )
+    assert result.stdout.splitlines()==[str(model.resolve()),str(blender.resolve())]
