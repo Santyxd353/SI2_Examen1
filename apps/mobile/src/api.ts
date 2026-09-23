@@ -3,7 +3,7 @@ import type { Identity } from './types';
 
 const ACCESS_KEY = 'vestidor18.access';
 const REFRESH_KEY = 'vestidor18.refresh';
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3018/api').replace(
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://172-191-104-91.sslip.io/api').replace(
   /\/$/,
   '',
 );
