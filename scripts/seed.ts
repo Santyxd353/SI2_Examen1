@@ -19,6 +19,7 @@ export async function seed(client: PrismaClient = db) {
       ['inventario', 'consultar'],
       ['inventario', 'gestionar'],
       ['ventas', 'registrar'],
+      ['pedidos', 'gestionar'],
       ['reportes', 'consultar'],
       ['modelos', 'gestionar'],
     ],

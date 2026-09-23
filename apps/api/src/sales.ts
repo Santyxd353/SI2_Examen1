@@ -212,6 +212,16 @@ export class SalesController {
           idempotencia: input.idempotency,
         },
       });
+      await tx.historial_pedido.create({
+        data: {
+          pedido_id: order.id,
+          actor_id: req.user.id,
+          estado_anterior: null,
+          estado_nuevo: 'CONFIRMADO',
+          motivo: 'Venta de mostrador confirmada al registrarse.',
+          creado_en: now,
+        },
+      });
       for (const line of lines) {
         const changed = await tx.inventario.updateMany({
           where: {

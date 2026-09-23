@@ -15,6 +15,7 @@ import {
   Search,
   Shirt,
   ShoppingBag,
+  ClipboardList,
   Trash2,
 } from 'lucide-react';
 import { api, privateModel, refresh, setToken, logoutSession } from './api';
@@ -23,6 +24,7 @@ import { Admin } from './Admin';
 import { Reports } from './Reports';
 import { Sales } from './Sales';
 import { Commerce } from './Commerce';
+import { OrdersAdmin } from './OrdersAdmin';
 type CatalogLocation = {
   id: string;
   nombre: string;
@@ -103,7 +105,7 @@ export function App() {
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
   const [page, setPage] = useState<
-      'catalogo' | 'avatar' | 'admin' | 'reports' | 'sales' | 'commerce'
+      'catalogo' | 'avatar' | 'admin' | 'reports' | 'sales' | 'commerce' | 'orders'
     >('catalogo'),
     [user, setUser] = useState<any>(null),
     [authOpen, setAuthOpen] = useState(false),
@@ -502,6 +504,11 @@ export function App() {
               Reportes
             </button>
           )}
+          {user?.permissions?.includes('pedidos:gestionar') && (
+            <button className={page === 'orders' ? 'active' : ''} onClick={() => setPage('orders')}>
+              <ClipboardList size={16} /> Pedidos
+            </button>
+          )}
           {user?.permissions?.includes('ventas:registrar') && (
             <button className={page === 'sales' ? 'active' : ''} onClick={() => setPage('sales')}>
               Vender
@@ -539,9 +546,11 @@ export function App() {
                 ? 'Administración / Sucursales y almacenes'
                 : page === 'commerce'
                   ? 'Tienda / Carrito y pedidos'
-                  : page === 'reports'
-                    ? 'Analítica / Reportes comerciales'
-                    : 'Operaciones / Registrar venta'}
+                  : page === 'orders'
+                    ? 'Operaciones / Gestión de pedidos'
+                    : page === 'reports'
+                      ? 'Analítica / Reportes comerciales'
+                      : 'Operaciones / Registrar venta'}
         </div>
         {error && !authOpen && (
           <div className="message error" role="alert">
@@ -841,6 +850,8 @@ export function App() {
           />
         ) : page === 'reports' ? (
           <Reports />
+        ) : page === 'orders' ? (
+          <OrdersAdmin />
         ) : page === 'sales' ? (
           <Sales />
         ) : page === 'commerce' ? (

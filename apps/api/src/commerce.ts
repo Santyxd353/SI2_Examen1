@@ -26,6 +26,7 @@ const checkout = z
     locationId: uuid,
     idempotency: uuid,
     address: z.string().trim().min(10).max(400),
+    addressId: uuid.optional(),
   })
   .strict();
 const paymentDecision = z
@@ -186,6 +187,21 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           },
         });
       }
+      await tx.historial_pedido.create({
+        data: {
+          pedido_id: order.id,
+          actor_id: event ? order.usuario_id : null,
+          estado_anterior: 'PENDIENTE_PAGO',
+          estado_nuevo: nextState,
+          motivo:
+            nextState === 'CONFIRMADO'
+              ? 'Pago simulado aprobado por el cliente.'
+              : event
+                ? 'Pago simulado rechazado por el cliente.'
+                : 'Reserva de stock vencida automáticamente.',
+          creado_en: now,
+        },
+      });
       return {
         locationId: order.ubicacion_id,
         variantIds: order.detalle_pedido.map((line) => line.variante_id),
@@ -267,6 +283,13 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           where: { id: input.locationId, activa: true },
         });
         if (!location) throw new BadRequestException('La sucursal o almacén no está activo.');
+        const savedAddress = input.addressId
+          ? await tx.direccion.findFirst({
+              where: { id: input.addressId, usuario_id: req.user.id, activa: true },
+            })
+          : null;
+        if (input.addressId && !savedAddress)
+          throw new BadRequestException('La dirección guardada no está disponible.');
         const items = await tx.item_carrito.findMany({
           where: { carrito_id: cart.id },
           include: { variante: { include: { producto: true } } },
@@ -328,7 +351,17 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             impuesto: 0,
             entrega: 0,
             total,
-            direccion_snapshot: { detalle: input.address },
+            direccion_snapshot: savedAddress
+              ? {
+                  direccionId: savedAddress.id,
+                  alias: savedAddress.alias,
+                  destinatario: savedAddress.destinatario,
+                  telefono: savedAddress.telefono,
+                  ciudad: savedAddress.ciudad,
+                  zona: savedAddress.zona,
+                  detalle: savedAddress.detalle,
+                }
+              : { detalle: input.address },
             reglas_snapshot: {
               tipo: channel === 'APP' ? 'COMPRA_APP' : 'COMPRA_WEB',
               pago: 'SIMULADO',
@@ -337,6 +370,16 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             estado: 'PENDIENTE_PAGO',
             creado_en: now,
             idempotencia: input.idempotency,
+          },
+        });
+        await tx.historial_pedido.create({
+          data: {
+            pedido_id: order.id,
+            actor_id: req.user.id,
+            estado_anterior: null,
+            estado_nuevo: 'PENDIENTE_PAGO',
+            motivo: `Pedido creado desde el canal ${channel}.`,
+            creado_en: now,
           },
         });
         for (const line of lines) {

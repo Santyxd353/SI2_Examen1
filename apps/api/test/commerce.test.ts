@@ -195,15 +195,41 @@ test('la aplicación mantiene carrito y pedidos separados del canal web', async 
   expect(webCart.body.canal).toBe('WEB');
   expect(webCart.body.item_carrito).toHaveLength(0);
 
+  const profile = await request(app.getHttpServer())
+    .post('/api/profile/addresses')
+    .set(appHeaders)
+    .auth(token, { type: 'bearer' })
+    .send({
+      alias: 'Casa móvil',
+      destinatario: 'Cliente Comercio',
+      telefono: '+591 70000002',
+      ciudad: 'La Paz',
+      zona: 'Centro',
+      detalle: 'Calle de prueba número 789',
+      predeterminada: true,
+    });
+  expect(profile.status).toBe(201);
+  const addressId = profile.body.direccion[0].id as string;
+
   const checkout = await request(app.getHttpServer())
     .post('/api/commerce/checkout')
     .set(appHeaders)
     .auth(token, { type: 'bearer' })
-    .send({ locationId, address: 'Calle de prueba 123, La Paz', idempotency: randomUUID() });
+    .send({
+      locationId,
+      addressId,
+      address: 'Cliente Comercio. La Paz, Centro. Calle de prueba número 789',
+      idempotency: randomUUID(),
+    });
   expect(checkout.status).toBe(201);
   expect(checkout.body.canal).toBe('APP');
   expect(checkout.body.numero).toMatch(/^APP-/);
   expect(checkout.body.pago[0].proveedor).toBe('SIMULADO_APP');
+  expect(checkout.body.direccion_snapshot).toMatchObject({
+    direccionId: addressId,
+    alias: 'Casa móvil',
+    ciudad: 'La Paz',
+  });
 
   const payment = await request(app.getHttpServer())
     .post(`/api/commerce/orders/${checkout.body.id}/payment`)

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   Modal,
@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { CatalogLocation } from './types';
+import type { CatalogLocation, CustomerAddress } from './types';
 
 export type MobileCartLine = {
   variantId: string;
@@ -51,15 +51,18 @@ type Props = {
   busy: boolean;
   error: string;
   message: string;
+  addresses: CustomerAddress[];
   onClose: () => void;
   onLocationChange: (location: CatalogLocation) => void;
   onChangeQuantity: (variantId: string, quantity: number) => Promise<void>;
-  onCheckout: (address: string) => Promise<boolean>;
+  onCheckout: (address: string, addressId?: string) => Promise<boolean>;
   onPay: (orderId: string, decision: 'APROBAR' | 'RECHAZAR') => Promise<void>;
   onReload: () => Promise<void>;
 };
 
 const money = (amount: number) => `Bs. ${Number(amount).toFixed(Number(amount) % 1 ? 2 : 0)}`;
+const addressText = (address: CustomerAddress) =>
+  `${address.destinatario}, ${address.telefono}. ${address.ciudad}, ${address.zona}. ${address.detalle}`;
 
 export function MobileCommerceSheet({
   visible,
@@ -71,6 +74,7 @@ export function MobileCommerceSheet({
   busy,
   error,
   message,
+  addresses,
   onClose,
   onLocationChange,
   onChangeQuantity,
@@ -80,10 +84,23 @@ export function MobileCommerceSheet({
 }: Props) {
   const [tab, setTab] = useState<'cart' | 'orders'>('cart');
   const [address, setAddress] = useState('');
+  const [selectedAddressId, setSelectedAddressId] = useState<string>();
   const unavailable = lines.some((line) => line.available < line.quantity || line.price <= 0);
 
+  useEffect(() => {
+    if (!visible || !addresses.length) return;
+    const preferred =
+      addresses.find((item) => item.id === selectedAddressId) ||
+      addresses.find((item) => item.predeterminada) ||
+      addresses[0];
+    if (preferred) {
+      setSelectedAddressId(preferred.id);
+      setAddress(addressText(preferred));
+    }
+  }, [visible, addresses]);
+
   async function checkout() {
-    if (await onCheckout(address.trim())) {
+    if (await onCheckout(address.trim(), selectedAddressId)) {
       setTab('orders');
       setAddress('');
     }
@@ -137,9 +154,15 @@ export function MobileCommerceSheet({
               locations={locations}
               location={location}
               address={address}
+              addresses={addresses}
+              selectedAddressId={selectedAddressId}
               busy={busy}
               unavailable={unavailable}
               onAddressChange={setAddress}
+              onSelectAddress={(selected) => {
+                setSelectedAddressId(selected?.id);
+                setAddress(selected ? addressText(selected) : '');
+              }}
               onLocationChange={onLocationChange}
               onChangeQuantity={onChangeQuantity}
               onCheckout={checkout}
@@ -159,9 +182,12 @@ function CartContent({
   locations,
   location,
   address,
+  addresses,
+  selectedAddressId,
   busy,
   unavailable,
   onAddressChange,
+  onSelectAddress,
   onLocationChange,
   onChangeQuantity,
   onCheckout,
@@ -171,9 +197,12 @@ function CartContent({
   locations: CatalogLocation[];
   location: CatalogLocation | null;
   address: string;
+  addresses: CustomerAddress[];
+  selectedAddressId?: string;
   busy: boolean;
   unavailable: boolean;
   onAddressChange: (value: string) => void;
+  onSelectAddress: (value?: CustomerAddress) => void;
   onLocationChange: (location: CatalogLocation) => void;
   onChangeQuantity: (variantId: string, quantity: number) => Promise<void>;
   onCheckout: () => Promise<void>;
@@ -265,10 +294,54 @@ function CartContent({
       </View>
 
       <Text style={styles.sectionLabel}>Dirección de entrega o retiro</Text>
+      {!!addresses.length && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.addressChoices}
+        >
+          {addresses.map((item) => (
+            <Pressable
+              key={item.id}
+              style={[
+                styles.addressChoice,
+                item.id === selectedAddressId && styles.addressChoiceActive,
+              ]}
+              onPress={() => onSelectAddress(item)}
+            >
+              <Text
+                style={[
+                  styles.addressChoiceText,
+                  item.id === selectedAddressId && styles.addressChoiceTextActive,
+                ]}
+              >
+                {item.alias}
+                {item.predeterminada ? ' · Principal' : ''}
+              </Text>
+            </Pressable>
+          ))}
+          <Pressable
+            style={[styles.addressChoice, !selectedAddressId && styles.addressChoiceActive]}
+            onPress={() => onSelectAddress(undefined)}
+          >
+            <Text
+              style={[
+                styles.addressChoiceText,
+                !selectedAddressId && styles.addressChoiceTextActive,
+              ]}
+            >
+              Otra dirección
+            </Text>
+          </Pressable>
+        </ScrollView>
+      )}
       <TextInput
         multiline
         value={address}
-        onChangeText={onAddressChange}
+        onChangeText={(value) => {
+          if (selectedAddressId) onSelectAddress(undefined);
+          onAddressChange(value);
+        }}
         maxLength={400}
         placeholder="Ciudad, zona, calle y número; o retiro en la sucursal seleccionada"
         placeholderTextColor="#929792"
@@ -522,6 +595,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlignVertical: 'top',
   },
+  addressChoices: { gap: 7, paddingBottom: 9 },
+  addressChoice: {
+    borderWidth: 1,
+    borderColor: '#d4d7d1',
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    backgroundColor: '#fff',
+  },
+  addressChoiceActive: { backgroundColor: green, borderColor: green },
+  addressChoiceText: { color: '#596159', fontSize: 9 },
+  addressChoiceTextActive: { color: '#fff', fontWeight: '800' },
   counter: { color: '#929793', fontSize: 8, textAlign: 'right', marginTop: 4 },
   warning: {
     color: '#a84b35',

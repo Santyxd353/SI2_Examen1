@@ -7,6 +7,29 @@ export type Identity = {
   permissions: string[];
 };
 
+export type CustomerAddress = {
+  id: string;
+  alias: string;
+  destinatario: string;
+  telefono: string;
+  ciudad: string;
+  zona: string;
+  detalle: string;
+  predeterminada: boolean;
+  activa: boolean;
+};
+
+export type CustomerProfile = {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  telefono: string | null;
+  preferencias: { push?: boolean };
+  direccion: CustomerAddress[];
+  identity: Identity;
+};
+
 export type LocationAvailability = {
   id: string;
   nombre: string;

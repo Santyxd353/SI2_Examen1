@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -16,8 +17,16 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { API_URL, api } from './api';
+import { AccountSheet, type AddressInput } from './AccountSheet';
 import { MobileCommerceSheet, type MobileCartLine, type MobileOrder } from './MobileCommerceSheet';
-import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
+import type {
+  Catalog,
+  CatalogLocation,
+  CustomerProfile,
+  Identity,
+  Product,
+  Variant,
+} from './types';
 
 type Props = {
   user: Identity;
@@ -39,6 +48,7 @@ type Props = {
   onClearFilters: () => void;
   onTryAr: (product: Product, variant: Variant) => void;
   onCatalogRefresh: () => Promise<void>;
+  onIdentityChange: (identity: Identity) => void;
   onAdminMode?: () => void;
   onLogout: () => void;
 };
@@ -79,6 +89,7 @@ export function CatalogScreen({
   onClearFilters,
   onTryAr,
   onCatalogRefresh,
+  onIdentityChange,
   onAdminMode,
   onLogout,
 }: Props) {
@@ -97,6 +108,11 @@ export function CatalogScreen({
   const [commerceBusy, setCommerceBusy] = useState(false);
   const [commerceError, setCommerceError] = useState('');
   const [commerceMessage, setCommerceMessage] = useState('');
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileMessage, setProfileMessage] = useState('');
 
   const products = useMemo(
     () =>
@@ -165,6 +181,10 @@ export function CatalogScreen({
     void loadCommerce();
   }, [location?.id]);
 
+  useEffect(() => {
+    void loadProfile();
+  }, [user.id]);
+
   async function addToCart(variant: Variant) {
     if (variant.disponible <= 0) return;
     const existing = cartLines.find((line) => line.variantId === variant.id);
@@ -203,7 +223,7 @@ export function CatalogScreen({
     }
   }
 
-  async function checkout(address: string) {
+  async function checkout(address: string, addressId?: string) {
     if (!location) return false;
     setCommerceBusy(true);
     setCommerceError('');
@@ -214,6 +234,7 @@ export function CatalogScreen({
         body: JSON.stringify({
           locationId: location.id,
           address,
+          ...(addressId ? { addressId } : {}),
           idempotency: operationId(),
         }),
       });
@@ -250,6 +271,114 @@ export function CatalogScreen({
     } finally {
       setCommerceBusy(false);
     }
+  }
+
+  async function loadProfile() {
+    setProfileLoading(true);
+    setProfileError('');
+    try {
+      const next = (await api('/profile')) as CustomerProfile;
+      setProfile(next);
+      onIdentityChange(next.identity);
+    } catch (reason) {
+      setProfileError((reason as Error).message);
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  async function saveProfile(input: {
+    nombres: string;
+    apellidos: string;
+    telefono: string | null;
+  }) {
+    setProfileBusy(true);
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      const next = (await api('/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      })) as CustomerProfile;
+      setProfile(next);
+      onIdentityChange(next.identity);
+      setProfileMessage('Perfil actualizado correctamente.');
+      return true;
+    } catch (reason) {
+      setProfileError((reason as Error).message);
+      return false;
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function saveAddress(input: AddressInput, id?: string) {
+    setProfileBusy(true);
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      const next = (await api(id ? `/profile/addresses/${id}` : '/profile/addresses', {
+        method: id ? 'PATCH' : 'POST',
+        body: JSON.stringify(input),
+      })) as CustomerProfile;
+      setProfile(next);
+      setProfileMessage(id ? 'Dirección actualizada.' : 'Dirección agregada.');
+      return true;
+    } catch (reason) {
+      setProfileError((reason as Error).message);
+      return false;
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function makeDefaultAddress(id: string) {
+    setProfileBusy(true);
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      const next = (await api(`/profile/addresses/${id}/default`, {
+        method: 'POST',
+      })) as CustomerProfile;
+      setProfile(next);
+      setProfileMessage('Dirección principal actualizada.');
+    } catch (reason) {
+      setProfileError((reason as Error).message);
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  function deleteAddress(id: string) {
+    Alert.alert(
+      'Eliminar dirección',
+      'La dirección dejará de estar disponible para nuevas compras.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setProfileBusy(true);
+              setProfileError('');
+              setProfileMessage('');
+              try {
+                const next = (await api(`/profile/addresses/${id}`, {
+                  method: 'DELETE',
+                })) as CustomerProfile;
+                setProfile(next);
+                setProfileMessage('Dirección eliminada.');
+              } catch (reason) {
+                setProfileError((reason as Error).message);
+              } finally {
+                setProfileBusy(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
   }
 
   function resetHome() {
@@ -565,6 +694,7 @@ export function CatalogScreen({
         busy={commerceBusy}
         error={commerceError}
         message={commerceMessage}
+        addresses={profile?.direccion || []}
         onClose={() => setCartOpen(false)}
         onLocationChange={onLocationChange}
         onChangeQuantity={changeQuantity}
@@ -573,33 +703,23 @@ export function CatalogScreen({
         onReload={loadCommerce}
       />
 
-      <Modal
-        transparent
+      <AccountSheet
         visible={accountOpen}
-        animationType="fade"
-        onRequestClose={() => setAccountOpen(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setAccountOpen(false)}>
-          <Pressable style={styles.accountCard} onPress={() => {}}>
-            <View style={styles.accountAvatar}>
-              <Text style={styles.accountAvatarText}>{user.nombres.slice(0, 1).toUpperCase()}</Text>
-            </View>
-            <Text style={styles.accountName}>
-              {user.nombres} {user.apellidos}
-            </Text>
-            <Text style={styles.accountEmail}>{user.correo}</Text>
-            <Text style={styles.accountRole}>{user.roles.join(' · ')}</Text>
-            {onAdminMode && (
-              <Pressable style={styles.adminModeButton} onPress={onAdminMode}>
-                <Text style={styles.adminModeText}>Volver al panel administrador</Text>
-              </Pressable>
-            )}
-            <Pressable style={styles.logoutButton} onPress={onLogout}>
-              <Text style={styles.logoutText}>Cerrar sesión</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        user={user}
+        profile={profile}
+        loading={profileLoading}
+        busy={profileBusy}
+        error={profileError}
+        message={profileMessage}
+        onClose={() => setAccountOpen(false)}
+        onReload={loadProfile}
+        onSaveProfile={saveProfile}
+        onSaveAddress={saveAddress}
+        onMakeDefault={makeDefaultAddress}
+        onDeleteAddress={async (id) => deleteAddress(id)}
+        onAdminMode={onAdminMode}
+        onLogout={onLogout}
+      />
     </SafeAreaView>
   );
 }
@@ -1118,60 +1238,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   bottomBadgeText: { color: '#fff', fontSize: 8, fontWeight: '800' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: '#1118',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  accountCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 24,
-    alignItems: 'center',
-  },
-  accountAvatar: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accountAvatarText: { color: '#fff', fontSize: 25, fontWeight: '800' },
-  accountName: { color: '#1d2922', fontSize: 18, fontWeight: '800', marginTop: 12 },
-  accountEmail: { color: '#747b76', fontSize: 12, marginTop: 4 },
-  accountRole: {
-    color: green,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 8,
-  },
-  logoutButton: {
-    width: '100%',
-    minHeight: 46,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#c8cec9',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutText: { color: '#9f382d', fontWeight: '700' },
-  adminModeButton: {
-    width: '100%',
-    minHeight: 46,
-    marginTop: 22,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: green,
-  },
-  adminModeText: { color: '#fff', fontWeight: '800' },
   sheetOverlay: { flex: 1, backgroundColor: '#1118', justifyContent: 'flex-end' },
   sheetDismiss: { flex: 1 },
   sheet: {

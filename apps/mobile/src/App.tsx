@@ -189,6 +189,7 @@ export function App() {
         setPage('ar');
       }}
       onCatalogRefresh={() => loadCatalog(location?.id || '')}
+      onIdentityChange={setUser}
       onAdminMode={
         isAdministrator(user)
           ? () => {

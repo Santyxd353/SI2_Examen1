@@ -15,6 +15,8 @@ import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
+import { ProfileController } from './profile';
+import { OrdersController } from './orders';
 import { RealtimeGateway } from './realtime';
 import { ApiErrors } from './errors';
 import { storedPath, ensureStorage } from './storage';
@@ -37,6 +39,8 @@ class HealthController {
     AnalyticsController,
     SalesController,
     CommerceController,
+    ProfileController,
+    OrdersController,
   ],
   providers: [Db, AuthService, AuthGuard, AvatarJobs, CommercialAnalytics, RealtimeGateway],
 })
