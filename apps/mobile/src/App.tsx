@@ -307,6 +307,9 @@ function LoginScreen({
               accessibilityLabel="Nombres"
               autoCapitalize="words"
               placeholder="Nombres"
+              placeholderTextColor="#626a61"
+              selectionColor="#303a2e"
+              cursorColor="#303a2e"
               style={styles.input}
               value={nombres}
               onChangeText={setNombres}
@@ -315,6 +318,9 @@ function LoginScreen({
               accessibilityLabel="Apellidos"
               autoCapitalize="words"
               placeholder="Apellidos"
+              placeholderTextColor="#626a61"
+              selectionColor="#303a2e"
+              cursorColor="#303a2e"
               style={styles.input}
               value={apellidos}
               onChangeText={setApellidos}
@@ -327,6 +333,9 @@ function LoginScreen({
           autoCorrect={false}
           keyboardType="email-address"
           placeholder="Correo"
+          placeholderTextColor="#626a61"
+          selectionColor="#303a2e"
+          cursorColor="#303a2e"
           style={styles.input}
           value={correo}
           onChangeText={setCorreo}
@@ -334,6 +343,9 @@ function LoginScreen({
         <TextInput
           accessibilityLabel="Contraseña"
           placeholder={mode === 'register' ? 'Contraseña (mínimo 10 caracteres)' : 'Contraseña'}
+          placeholderTextColor="#626a61"
+          selectionColor="#303a2e"
+          cursorColor="#303a2e"
           secureTextEntry
           style={styles.input}
           value={clave}
@@ -343,6 +355,9 @@ function LoginScreen({
           <TextInput
             accessibilityLabel="Confirmar contraseña"
             placeholder="Confirmar contraseña"
+            placeholderTextColor="#626a61"
+            selectionColor="#303a2e"
+            cursorColor="#303a2e"
             secureTextEntry
             style={styles.input}
             value={confirmacion}
@@ -701,7 +716,8 @@ const styles = StyleSheet.create({
     borderColor: '#cbd0c5',
     backgroundColor: '#fff',
     paddingHorizontal: 14,
-    color: '#252b24',
+    color: '#111712',
+    fontSize: 15,
   },
   authTabs: {
     flexDirection: 'row',
