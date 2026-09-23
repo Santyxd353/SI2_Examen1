@@ -14,6 +14,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { Db } from './db';
+import { RealtimeGateway } from './realtime';
 
 const uuid = z.string().uuid();
 const status = z.enum([
@@ -33,6 +34,29 @@ const transition = z
     reason: z.string().trim().min(3).max(400),
   })
   .strict();
+const cancellation = z
+  .object({ reason: z.string().trim().min(10).max(400), idempotency: uuid })
+  .strict();
+const returnReview = z
+  .object({
+    decision: z.enum(['APROBAR', 'RECHAZAR']),
+    resolution: z.string().trim().min(10).max(500),
+    locationId: uuid.optional(),
+    idempotency: uuid,
+    items: z
+      .array(
+        z
+          .object({
+            returnDetailId: uuid,
+            acceptedQuantity: z.number().int().min(0).max(100),
+            observation: z.string().trim().max(400).optional(),
+          })
+          .strict(),
+      )
+      .max(100)
+      .default([]),
+  })
+  .strict();
 
 const allowedTransitions: Record<string, string[]> = {
   CONFIRMADO: ['PREPARANDO'],
@@ -44,7 +68,10 @@ const allowedTransitions: Record<string, string[]> = {
 @Controller('admin/orders')
 @UseGuards(AuthGuard)
 export class OrdersController {
-  constructor(@Inject(Db) private db: Db) {}
+  constructor(
+    @Inject(Db) private db: Db,
+    @Inject(RealtimeGateway) private realtime: RealtimeGateway,
+  ) {}
 
   @Get()
   async list(
@@ -70,7 +97,13 @@ export class OrdersController {
         detalle_pedido: true,
         pago: true,
         historial_pedido: { orderBy: { creado_en: 'asc' } },
-        devolucion: { select: { id: true, estado: true, tipo: true } },
+        devolucion: {
+          include: {
+            detalle_devolucion: { include: { detalle_pedido: true } },
+            reembolso: true,
+          },
+          orderBy: { solicitada_en: 'desc' },
+        },
       },
     });
   }
@@ -127,5 +160,292 @@ export class OrdersController {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+  }
+
+  @Patch(':id/cancel')
+  async cancel(@Req() req: AuthRequest, @Param('id') rawId: string, @Body() body: unknown) {
+    requirePermission(req.user, 'pedidos:gestionar');
+    const id = uuid.parse(rawId);
+    const input = cancellation.parse(body);
+    const previous = await this.db.reembolso.findUnique({
+      where: { idempotencia: input.idempotency },
+      include: { devolucion: true },
+    });
+    if (previous) {
+      if (previous.devolucion?.pedido_id !== id)
+        throw new BadRequestException('Este identificador ya fue utilizado.');
+      return this.db.pedido.findUniqueOrThrow({ where: { id } });
+    }
+    const changed = await this.db.$transaction(
+      async (tx) => {
+        const order = await tx.pedido.findUnique({
+          where: { id },
+          include: {
+            detalle_pedido: true,
+            pago: true,
+            devolucion: { where: { estado: { not: 'RECHAZADA' } } },
+          },
+        });
+        if (!order) throw new BadRequestException('Pedido no encontrado.');
+        if (!['CONFIRMADO', 'PREPARANDO'].includes(order.estado))
+          throw new BadRequestException('Solo se cancelan pedidos confirmados o en preparación.');
+        if (!order.ubicacion_id)
+          throw new BadRequestException(
+            'El pedido no tiene una ubicación para reintegrar el stock.',
+          );
+        if (order.devolucion.length)
+          throw new BadRequestException('El pedido ya tiene una cancelación o devolución activa.');
+        const payment = order.pago.find((item) => item.estado === 'CONFIRMADO');
+        if (!payment) throw new BadRequestException('El pedido no tiene un pago confirmado.');
+        const now = new Date();
+        const refundRequest = await tx.devolucion.create({
+          data: {
+            pedido_id: order.id,
+            usuario_id: order.usuario_id,
+            tipo: 'CANCELACION',
+            estado: 'RESUELTA',
+            motivo: input.reason,
+            resolucion: 'Cancelación administrativa aprobada con reintegro y reembolso simulado.',
+            revisado_por: req.user.id,
+            solicitada_en: now,
+            resuelta_en: now,
+          },
+        });
+        const variantIds: string[] = [];
+        for (const line of order.detalle_pedido) {
+          const inventory = await tx.inventario.findUnique({
+            where: {
+              variante_id_ubicacion_id: {
+                variante_id: line.variante_id,
+                ubicacion_id: order.ubicacion_id,
+              },
+            },
+          });
+          if (!inventory)
+            throw new BadRequestException(
+              `No existe inventario para reintegrar ${line.sku_snapshot}.`,
+            );
+          await tx.inventario.update({
+            where: { id: inventory.id },
+            data: { fisico: { increment: line.cantidad }, version: { increment: 1 } },
+          });
+          const detail = await tx.detalle_devolucion.create({
+            data: {
+              devolucion_id: refundRequest.id,
+              detalle_pedido_id: line.id,
+              cantidad: line.cantidad,
+              cantidad_apta: line.cantidad,
+              ubicacion_id: order.ubicacion_id,
+              observacion: 'Cancelación antes del despacho; stock reintegrado.',
+              reintegrada_en: now,
+            },
+          });
+          await tx.movimiento_stock.create({
+            data: {
+              inventario_id: inventory.id,
+              grupo_operacion: refundRequest.id,
+              tipo: 'DEVOLUCION',
+              delta_fisico: line.cantidad,
+              delta_reservado: 0,
+              delta_comprometido: 0,
+              motivo: `Cancelación ${order.numero} · detalle ${detail.id}`,
+              actor_id: req.user.id,
+              pedido_id: order.id,
+              creado_en: now,
+            },
+          });
+          variantIds.push(line.variante_id);
+        }
+        await tx.reembolso.create({
+          data: {
+            pago_id: payment.id,
+            devolucion_id: refundRequest.id,
+            idempotencia: input.idempotency,
+            referencia: `CANCEL-${order.numero}`,
+            monto: payment.monto,
+            estado: 'CONFIRMADO',
+            motivo: input.reason,
+            creado_en: now,
+            confirmado_en: now,
+          },
+        });
+        await tx.pago.update({ where: { id: payment.id }, data: { estado: 'REEMBOLSADO' } });
+        await tx.pedido.update({ where: { id }, data: { estado: 'CANCELADO' } });
+        await tx.historial_pedido.create({
+          data: {
+            pedido_id: order.id,
+            actor_id: req.user.id,
+            estado_anterior: order.estado,
+            estado_nuevo: 'CANCELADO',
+            motivo: input.reason,
+            creado_en: now,
+          },
+        });
+        return { locationId: order.ubicacion_id, variantIds };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    this.realtime.inventoryChanged(changed.locationId, {
+      variantIds: changed.variantIds,
+      reason: 'CANCELACION',
+    });
+    return this.db.pedido.findUniqueOrThrow({ where: { id } });
+  }
+
+  @Patch('returns/:id/review')
+  async reviewReturn(@Req() req: AuthRequest, @Param('id') rawId: string, @Body() body: unknown) {
+    requirePermission(req.user, 'pedidos:gestionar');
+    const id = uuid.parse(rawId);
+    const input = returnReview.parse(body);
+    const prior = await this.db.reembolso.findUnique({
+      where: { idempotencia: input.idempotency },
+    });
+    if (prior) {
+      if (prior.devolucion_id !== id)
+        throw new BadRequestException('Este identificador ya fue utilizado.');
+      return this.db.devolucion.findUniqueOrThrow({
+        where: { id },
+        include: { detalle_devolucion: true, reembolso: true },
+      });
+    }
+    const changed = await this.db.$transaction(
+      async (tx) => {
+        const request = await tx.devolucion.findUnique({
+          where: { id },
+          include: {
+            detalle_devolucion: { include: { detalle_pedido: true } },
+            pedido: { include: { pago: true } },
+          },
+        });
+        if (!request || request.tipo !== 'DEVOLUCION')
+          throw new BadRequestException('Solicitud de devolución no encontrada.');
+        if (request.estado !== 'SOLICITADA')
+          throw new BadRequestException('La devolución ya fue revisada.');
+        const now = new Date();
+        if (input.decision === 'RECHAZAR') {
+          const claimed = await tx.devolucion.updateMany({
+            where: { id, estado: 'SOLICITADA' },
+            data: {
+              estado: 'RECHAZADA',
+              resolucion: input.resolution,
+              revisado_por: req.user.id,
+              resuelta_en: now,
+            },
+          });
+          if (claimed.count !== 1) throw new BadRequestException('La devolución ya fue revisada.');
+          return { locationId: null as string | null, variantIds: [] as string[] };
+        }
+        const locationId = input.locationId || request.pedido.ubicacion_id;
+        if (!locationId)
+          throw new BadRequestException('Selecciona una ubicación para recibir la devolución.');
+        if (input.items.length !== request.detalle_devolucion.length)
+          throw new BadRequestException('Revisa la cantidad de cada prenda solicitada.');
+        const inputs = new Map(input.items.map((item) => [item.returnDetailId, item]));
+        let refundAmount = 0;
+        const variantIds: string[] = [];
+        for (const detail of request.detalle_devolucion) {
+          const reviewed = inputs.get(detail.id);
+          if (!reviewed || reviewed.acceptedQuantity > detail.cantidad)
+            throw new BadRequestException('Una cantidad aceptada supera lo solicitado.');
+          await tx.detalle_devolucion.update({
+            where: { id: detail.id },
+            data: {
+              cantidad_apta: reviewed.acceptedQuantity,
+              ubicacion_id: locationId,
+              observacion: reviewed.observation,
+              reintegrada_en: reviewed.acceptedQuantity ? now : null,
+            },
+          });
+          if (!reviewed.acceptedQuantity) continue;
+          const inventory = await tx.inventario.findUnique({
+            where: {
+              variante_id_ubicacion_id: {
+                variante_id: detail.detalle_pedido.variante_id,
+                ubicacion_id: locationId,
+              },
+            },
+          });
+          if (!inventory)
+            throw new BadRequestException(
+              `No existe inventario para reintegrar ${detail.detalle_pedido.sku_snapshot}.`,
+            );
+          await tx.inventario.update({
+            where: { id: inventory.id },
+            data: {
+              fisico: { increment: reviewed.acceptedQuantity },
+              version: { increment: 1 },
+            },
+          });
+          await tx.movimiento_stock.create({
+            data: {
+              inventario_id: inventory.id,
+              grupo_operacion: request.id,
+              tipo: 'DEVOLUCION',
+              delta_fisico: reviewed.acceptedQuantity,
+              delta_reservado: 0,
+              delta_comprometido: 0,
+              motivo: `Devolución ${request.pedido.numero} · ${input.resolution}`,
+              actor_id: req.user.id,
+              pedido_id: request.pedido_id,
+              creado_en: now,
+            },
+          });
+          refundAmount +=
+            (Number(detail.detalle_pedido.total_linea) / detail.detalle_pedido.cantidad) *
+            reviewed.acceptedQuantity;
+          variantIds.push(detail.detalle_pedido.variante_id);
+        }
+        refundAmount = Number(refundAmount.toFixed(2));
+        if (refundAmount <= 0)
+          throw new BadRequestException('Acepta al menos una unidad o rechaza la solicitud.');
+        const payment = request.pedido.pago.find((item) =>
+          ['CONFIRMADO', 'REEMBOLSADO'].includes(item.estado),
+        );
+        if (!payment) throw new BadRequestException('No existe un pago para reembolsar.');
+        const previousRefunds = await tx.reembolso.aggregate({
+          where: { pago_id: payment.id, estado: 'CONFIRMADO' },
+          _sum: { monto: true },
+        });
+        const refundedBefore = Number(previousRefunds._sum.monto || 0);
+        if (refundedBefore + refundAmount > Number(payment.monto))
+          throw new BadRequestException('El reembolso supera el pago confirmado.');
+        await tx.reembolso.create({
+          data: {
+            pago_id: payment.id,
+            devolucion_id: request.id,
+            idempotencia: input.idempotency,
+            referencia: `DEV-${request.id}`,
+            monto: refundAmount,
+            estado: 'CONFIRMADO',
+            motivo: input.resolution,
+            creado_en: now,
+            confirmado_en: now,
+          },
+        });
+        if (refundedBefore + refundAmount === Number(payment.monto))
+          await tx.pago.update({ where: { id: payment.id }, data: { estado: 'REEMBOLSADO' } });
+        const claimed = await tx.devolucion.updateMany({
+          where: { id, estado: 'SOLICITADA' },
+          data: {
+            estado: 'RESUELTA',
+            resolucion: input.resolution,
+            revisado_por: req.user.id,
+            resuelta_en: now,
+          },
+        });
+        if (claimed.count !== 1) throw new BadRequestException('La devolución ya fue revisada.');
+        return { locationId, variantIds };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    if (changed.locationId && changed.variantIds.length)
+      this.realtime.inventoryChanged(changed.locationId, {
+        variantIds: changed.variantIds,
+        reason: 'DEVOLUCION',
+      });
+    return this.db.devolucion.findUniqueOrThrow({
+      where: { id },
+      include: { detalle_devolucion: true, reembolso: true },
+    });
   }
 }

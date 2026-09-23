@@ -789,6 +789,98 @@ h1 em {
   background: #fff5e7;
   color: #79591f;
 }
+.return-review {
+  margin-top: 10px;
+  border: 1px solid #e6d7bd;
+  background: #fffaf1;
+  padding: 14px;
+}
+.return-review-heading,
+.return-result {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.return-review-heading p {
+  margin-top: 4px;
+  color: #646b61;
+  font-size: 11px;
+}
+.return-line {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 130px;
+  gap: 14px;
+  align-items: end;
+  padding: 11px 0;
+  border-bottom: 1px solid #eee2ce;
+  font-size: 11px;
+}
+.return-line > div {
+  display: grid;
+  gap: 4px;
+}
+.return-line small,
+.return-result span {
+  color: var(--muted);
+}
+.return-line label,
+.return-resolution label {
+  display: grid;
+  gap: 6px;
+  color: #687065;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.return-line input,
+.return-resolution input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 9px 10px;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.return-resolution {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding-top: 12px;
+}
+.return-buttons,
+.order-transition-buttons {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.return-buttons button,
+.order-transition-buttons button {
+  min-height: 42px;
+}
+.danger-button {
+  border: 1px solid #b75547;
+  background: #fff;
+  color: #943c30;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.danger-button:hover:not(:disabled) {
+  background: #fae7e3;
+}
+.return-result {
+  padding-top: 12px;
+  font-size: 11px;
+}
+.return-result b {
+  color: #23603b;
+  white-space: nowrap;
+}
 .order-history {
   margin-top: 12px;
   border-top: 1px solid var(--line);
@@ -830,7 +922,9 @@ h1 em {
   .orders-toolbar,
   .order-admin-grid,
   .order-transition,
-  .order-lines > div {
+  .order-lines > div,
+  .return-line,
+  .return-resolution {
     grid-template-columns: 1fr;
   }
   .order-admin-heading {
@@ -841,6 +935,16 @@ h1 em {
   }
   .order-history > div small {
     grid-column: 2;
+  }
+  .return-review-heading,
+  .return-result,
+  .return-buttons,
+  .order-transition-buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .return-review-heading .order-state {
+    align-self: flex-start;
   }
 }
 .admin-page > .section-title {

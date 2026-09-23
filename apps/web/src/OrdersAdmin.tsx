@@ -37,7 +37,25 @@ type Order = {
     motivo: string;
     creado_en: string;
   }[];
-  devolucion: { id: string; estado: string; tipo: string }[];
+  devolucion: {
+    id: string;
+    estado: string;
+    tipo: string;
+    motivo: string;
+    resolucion?: string | null;
+    detalle_devolucion: {
+      id: string;
+      cantidad: number;
+      cantidad_apta: number;
+      observacion?: string | null;
+      detalle_pedido: {
+        descripcion_snapshot: string;
+        sku_snapshot: string;
+        cantidad: number;
+      };
+    }[];
+    reembolso: { id: string; monto: string | number; estado: string }[];
+  }[];
 };
 
 const nextStatus: Record<string, string> = {
@@ -70,6 +88,8 @@ export function OrdersAdmin() {
   const [channel, setChannel] = useState('');
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [tracking, setTracking] = useState<Record<string, string>>({});
+  const [returnResolutions, setReturnResolutions] = useState<Record<string, string>>({});
+  const [acceptedQuantities, setAcceptedQuantities] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -115,6 +135,81 @@ export function OrdersAdmin() {
         }),
       });
       setMessage(`${order.numero} cambió a ${target.replaceAll('_', ' ')}.`);
+      await load();
+    } catch (reasonValue) {
+      setError((reasonValue as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function cancel(order: Order) {
+    const reason = reasons[order.id]?.trim() || '';
+    if (reason.length < 10) {
+      setError('Escribe un motivo de cancelación de al menos 10 caracteres.');
+      return;
+    }
+    if (!window.confirm(`¿Cancelar ${order.numero}, reintegrar el stock y simular el reembolso?`))
+      return;
+    setBusy(order.id);
+    setError('');
+    setMessage('');
+    try {
+      await api(`/admin/orders/${order.id}/cancel`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reason, idempotency: crypto.randomUUID() }),
+      });
+      setMessage(`${order.numero} fue cancelado; el stock y el reembolso quedaron registrados.`);
+      await load();
+    } catch (reasonValue) {
+      setError((reasonValue as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function reviewReturn(order: Order, returnId: string, decision: 'APROBAR' | 'RECHAZAR') {
+    const request = order.devolucion.find((item) => item.id === returnId);
+    if (!request) return;
+    const resolution = returnResolutions[returnId]?.trim() || '';
+    if (resolution.length < 10) {
+      setError('Escribe una resolución de al menos 10 caracteres.');
+      return;
+    }
+    const items = request.detalle_devolucion.map((detail) => ({
+      returnDetailId: detail.id,
+      acceptedQuantity: Number(acceptedQuantities[detail.id] ?? detail.cantidad),
+    }));
+    if (
+      decision === 'APROBAR' &&
+      items.some(
+        (item, index) =>
+          !Number.isInteger(item.acceptedQuantity) ||
+          item.acceptedQuantity < 0 ||
+          item.acceptedQuantity > request.detalle_devolucion[index].cantidad,
+      )
+    ) {
+      setError('Revisa las cantidades aceptadas de la devolución.');
+      return;
+    }
+    setBusy(returnId);
+    setError('');
+    setMessage('');
+    try {
+      await api(`/admin/orders/returns/${returnId}/review`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          decision,
+          resolution,
+          idempotency: crypto.randomUUID(),
+          items: decision === 'APROBAR' ? items : [],
+        }),
+      });
+      setMessage(
+        decision === 'APROBAR'
+          ? 'Devolución resuelta con reintegro y reembolso simulado.'
+          : 'La solicitud de devolución fue rechazada.',
+      );
       await load();
     } catch (reasonValue) {
       setError((reasonValue as Error).message);
@@ -237,6 +332,91 @@ export function OrdersAdmin() {
                   Tiene {order.devolucion.length} solicitud(es) de devolución.
                 </div>
               )}
+              {order.devolucion.map((returnRequest) => (
+                <section className="return-review" key={returnRequest.id}>
+                  <div className="return-review-heading">
+                    <div>
+                      <b>{returnRequest.tipo === 'CANCELACION' ? 'Cancelación' : 'Devolución'}</b>
+                      <p>{returnRequest.motivo}</p>
+                    </div>
+                    <span className={`order-state state-${returnRequest.estado.toLowerCase()}`}>
+                      {returnRequest.estado.replaceAll('_', ' ')}
+                    </span>
+                  </div>
+                  {returnRequest.detalle_devolucion.map((detail) => (
+                    <div className="return-line" key={detail.id}>
+                      <div>
+                        <span>{detail.detalle_pedido.descripcion_snapshot}</span>
+                        <small>
+                          {detail.detalle_pedido.sku_snapshot} · solicitadas: {detail.cantidad}
+                        </small>
+                      </div>
+                      {returnRequest.estado === 'SOLICITADA' ? (
+                        <label>
+                          Cantidad apta
+                          <input
+                            type="number"
+                            min="0"
+                            max={detail.cantidad}
+                            value={acceptedQuantities[detail.id] ?? String(detail.cantidad)}
+                            onChange={(event) =>
+                              setAcceptedQuantities((current) => ({
+                                ...current,
+                                [detail.id]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                      ) : (
+                        <b>Aptas: {detail.cantidad_apta}</b>
+                      )}
+                    </div>
+                  ))}
+                  {returnRequest.estado === 'SOLICITADA' ? (
+                    <div className="return-resolution">
+                      <label>
+                        Resolución de la revisión
+                        <input
+                          value={returnResolutions[returnRequest.id] || ''}
+                          onChange={(event) =>
+                            setReturnResolutions((current) => ({
+                              ...current,
+                              [returnRequest.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Describe la inspección y la decisión"
+                        />
+                      </label>
+                      <div className="return-buttons">
+                        <button
+                          className="primary"
+                          disabled={busy === returnRequest.id}
+                          onClick={() => void reviewReturn(order, returnRequest.id, 'APROBAR')}
+                        >
+                          Aprobar y reembolsar
+                        </button>
+                        <button
+                          className="danger-button"
+                          disabled={busy === returnRequest.id}
+                          onClick={() => void reviewReturn(order, returnRequest.id, 'RECHAZAR')}
+                        >
+                          Rechazar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="return-result">
+                      <span>{returnRequest.resolucion || 'Sin resolución registrada.'}</span>
+                      {!!returnRequest.reembolso.length && (
+                        <b>
+                          Reembolso simulado:{' '}
+                          {money(returnRequest.reembolso[0].monto, order.moneda)}
+                        </b>
+                      )}
+                    </div>
+                  )}
+                </section>
+              ))}
 
               <details className="order-history">
                 <summary>Historial ({order.historial_pedido.length})</summary>
@@ -275,20 +455,31 @@ export function OrdersAdmin() {
                       />
                     </label>
                   )}
-                  <button
-                    className="primary"
-                    disabled={busy === order.id}
-                    onClick={() => void advance(order)}
-                  >
-                    {target === 'PREPARANDO' ? (
-                      <PackageCheck size={16} />
-                    ) : target === 'DESPACHADO' ? (
-                      <Truck size={16} />
-                    ) : (
-                      <CheckCircle2 size={16} />
+                  <div className="order-transition-buttons">
+                    <button
+                      className="primary"
+                      disabled={busy === order.id}
+                      onClick={() => void advance(order)}
+                    >
+                      {target === 'PREPARANDO' ? (
+                        <PackageCheck size={16} />
+                      ) : target === 'DESPACHADO' ? (
+                        <Truck size={16} />
+                      ) : (
+                        <CheckCircle2 size={16} />
+                      )}
+                      {busy === order.id ? 'Guardando…' : actionLabel[target]}
+                    </button>
+                    {['CONFIRMADO', 'PREPARANDO'].includes(order.estado) && (
+                      <button
+                        className="danger-button"
+                        disabled={busy === order.id}
+                        onClick={() => void cancel(order)}
+                      >
+                        Cancelar y reembolsar
+                      </button>
                     )}
-                    {busy === order.id ? 'Guardando…' : actionLabel[target]}
-                  </button>
+                  </div>
                 </div>
               )}
             </article>

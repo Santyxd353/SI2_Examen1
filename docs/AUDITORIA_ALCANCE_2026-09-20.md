@@ -15,103 +15,103 @@ La ejecución verificada de la rama aprobó 44 pruebas de integración en 9 suit
 
 ## Estado de los casos de uso
 
-| Caso | Estado | Evidencia encontrada | Falta para cumplir el documento |
-| --- | --- | --- | --- |
-| CU01 Gestionar usuarios | Parcial | Registro de clientes, creación y listado de Vendedor y Analista desde administración | Edición, teléfono, suspensión, reactivación, revocación administrativa, protección del último administrador y auditoría |
-| CU02 Autenticar y autorizar | Implementado | Login web y móvil, JWT corto, renovación rotativa, cierre de sesión, permisos y alcance por ubicación con pruebas | Ampliar auditoría de accesos como requisito transversal |
-| CU03 Gestionar roles y permisos | Parcial | Roles y permisos iniciales, asignación de rol al crear personal | Pantalla y API para crear, editar y eliminar roles, matriz de permisos y bloqueo de roles asignados |
-| CU04 Gestionar y consultar catálogo | Parcial | Alta de prenda, variantes, galería de 1 a 8 fotos, marca, material, talla, color, precio, filtros y stock por ubicación | Edición y retiro de prendas, códigos de barras, filtros de categoría y precio, ordenamiento y publicación administrable |
-| CU05 Configurar reglas comerciales | Pendiente | Tablas de configuración y precios | Editor versionado, impuestos, moneda, entrega, reserva, devoluciones, descuentos, simulación y auditoría |
-| CU06 Publicar avisos | Pendiente | Tabla `aviso` | API e interfaz de creación, audiencia, canal, vigencia, publicación y consulta |
-| CU07 Gestionar perfil y direcciones | Pendiente | Consulta de identidad autenticada | Edición de perfil, teléfono, preferencias, direcciones y protección por propietario |
-| CU08 Gestionar inventario y ubicaciones | Parcial | Sucursales y almacenes, personal por ubicación, saldos, conteos, ajustes, transferencias, mínimos, alertas e historial | Jerarquía de cajas dentro de tiendas y más pruebas de concurrencia |
-| CU09 Procesar pagos | Parcial | Registro idempotente de efectivo, tarjeta o QR y decisión simulada en compra web | Adaptador de pasarela, verificación criptográfica de eventos, estados asíncronos y reembolsos reales |
-| CU10 Consultar reportes de ventas | Parcial | Período, ubicación, ventas, pedidos, unidades, ticket, producto, vendedor e inventario | Ventas netas con devoluciones, cajas, comparación de períodos y exportación |
-| CU11 Gestionar devoluciones y cancelaciones | Parcial | Solicitud total o parcial desde Mis pedidos y cancelación automática por reserva vencida o pago rechazado | Revisión administrativa, reglas de plazo y estado, inspección, reintegro condicionado y reembolso |
-| CU12 Gestionar carrito | Parcial | Carrito persistente, cantidades, retiro de líneas y totales en web | Descuentos vigentes, transferencia exacta desde la prueba AR y validación visible de disponibilidad al modificar cantidades |
-| CU13 Configurar disponibilidad por canal | Pendiente | Tabla y políticas WEB sembradas para inventario | Pantalla y API de activación por canal y ubicación; diferenciación operativa entre web y móvil |
-| CU14 Gestionar pedidos | Parcial | Checkout web, reserva temporal, Mis pedidos y venta de mostrador | Dirección estructurada, preparación, despacho, entrega, cancelación administrada e historial completo de estados |
-| CU15 Analizar uso del vestidor | Pendiente | Eventos básicos de la experiencia 3D | Embudo AR, fallos, cobertura, conversión atribuible e idempotencia analítica visible |
-| CU16 Probar prendas | Parcial con cambio de alcance | Visor 3D existente y prototipo AR Android con detección de pose y superposición | Formalizar sustitución por RA; fotogramas continuos, anclajes, deformación, oclusión y calibración real |
-| CU17 Recomendar reposición | Parcial | Propuestas persistidas de reposición o traslado con explicación | Revisión, confirmación, rechazo y ejecución controlada del movimiento |
-| CU18 Buscar prendas por imagen | Pendiente | Recursos gráficos del catálogo | Carga segura, extracción de características, comparación, puntaje y resultados enlazados |
-| CU19 Detectar anomalías | Parcial | Detección de ventas semanales atípicas con evidencia | Ajustes y devoluciones, detalle, revisión humana, estados y umbrales configurables |
-| CU20 Predecir demanda | Parcial | Promedio móvil ponderado, horizonte, intervalo, persistencia y versión | Evaluación histórica del error, gráficos y comparación entre modelos |
-| CU21 Gestionar notificaciones | Pendiente | Tablas de notificación, dispositivo y outbox | Generación por eventos, bandeja, lectura, preferencias, intentos y push |
-| CU22 Consultar analítica en lenguaje natural | Parcial | Intenciones locales de ventas e inventario, solo lectura y rechazo de escritura | Modelo externo o intérprete más amplio, períodos expresados en lenguaje natural y registro completo de consultas |
-| CU23 Generar avatar desde fotografías | Parcial y legado | Consentimiento, tres vistas, cola, procesamiento Python, GLB y purga | Validación con fotos reales, orientación, cuerpo visible, precisión y calibración; deja de ser el flujo prioritario por el cambio a RA |
-| CU24 Gestionar recursos de prendas | Parcial con cambio de alcance | GLB iniciales y administración de PNG AR por variante con borrador y publicación | Validación/versionado de GLB si se conserva 3D y validación visual/calibración de recursos RA reales |
-| CU25 Revisar y eliminar avatar | Parcial y legado | Revisión, aprobación, sustitución de versión y eliminación verificada | Corrección de medidas y regeneración versionada; definir retiro del flujo al consolidar RA |
+| Caso                                         | Estado                        | Evidencia encontrada                                                                                                                                                                                  | Falta para cumplir el documento                                                                                                        |
+| -------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| CU01 Gestionar usuarios                      | Parcial                       | Registro de clientes, creación y listado de Vendedor y Analista desde administración                                                                                                                  | Edición, teléfono, suspensión, reactivación, revocación administrativa, protección del último administrador y auditoría                |
+| CU02 Autenticar y autorizar                  | Implementado                  | Login web y móvil, JWT corto, renovación rotativa, cierre de sesión, permisos y alcance por ubicación con pruebas                                                                                     | Ampliar auditoría de accesos como requisito transversal                                                                                |
+| CU03 Gestionar roles y permisos              | Parcial                       | Roles y permisos iniciales, asignación de rol al crear personal                                                                                                                                       | Pantalla y API para crear, editar y eliminar roles, matriz de permisos y bloqueo de roles asignados                                    |
+| CU04 Gestionar y consultar catálogo          | Parcial                       | Alta de prenda, variantes, galería de 1 a 8 fotos, marca, material, talla, color, precio, filtros y stock por ubicación                                                                               | Edición y retiro de prendas, códigos de barras, filtros de categoría y precio, ordenamiento y publicación administrable                |
+| CU05 Configurar reglas comerciales           | Pendiente                     | Tablas de configuración y precios                                                                                                                                                                     | Editor versionado, impuestos, moneda, entrega, reserva, devoluciones, descuentos, simulación y auditoría                               |
+| CU06 Publicar avisos                         | Pendiente                     | Tabla `aviso`                                                                                                                                                                                         | API e interfaz de creación, audiencia, canal, vigencia, publicación y consulta                                                         |
+| CU07 Gestionar perfil y direcciones          | Pendiente                     | Consulta de identidad autenticada                                                                                                                                                                     | Edición de perfil, teléfono, preferencias, direcciones y protección por propietario                                                    |
+| CU08 Gestionar inventario y ubicaciones      | Parcial                       | Sucursales y almacenes, personal por ubicación, saldos, conteos, ajustes, transferencias, mínimos, alertas e historial                                                                                | Jerarquía de cajas dentro de tiendas y más pruebas de concurrencia                                                                     |
+| CU09 Procesar pagos                          | Parcial                       | Registro idempotente de efectivo, tarjeta o QR y decisión simulada en compra web                                                                                                                      | Adaptador de pasarela, verificación criptográfica de eventos, estados asíncronos y reembolsos reales                                   |
+| CU10 Consultar reportes de ventas            | Parcial                       | Período, ubicación, ventas, pedidos, unidades, ticket, producto, vendedor e inventario                                                                                                                | Ventas netas con devoluciones, cajas, comparación de períodos y exportación                                                            |
+| CU11 Gestionar devoluciones y cancelaciones  | Parcial                       | Solicitud total/parcial; revisión administrativa; rechazo o aceptación por cantidad apta; reintegro condicionado; reembolso proporcional simulado; cancelación previa al despacho con reintegro total | Políticas configurables de plazo/estado, recepción física por etapas y reembolso mediante pasarela real                                |
+| CU12 Gestionar carrito                       | Parcial                       | Carrito persistente, cantidades, retiro de líneas y totales en web                                                                                                                                    | Descuentos vigentes, transferencia exacta desde la prueba AR y validación visible de disponibilidad al modificar cantidades            |
+| CU13 Configurar disponibilidad por canal     | Pendiente                     | Tabla y políticas WEB sembradas para inventario                                                                                                                                                       | Pantalla y API de activación por canal y ubicación; diferenciación operativa entre web y móvil                                         |
+| CU14 Gestionar pedidos                       | Parcial                       | Checkout WEB/APP, reserva temporal, dirección estructurada, Mis pedidos, venta de mostrador, preparación, despacho con seguimiento, entrega, cierre, cancelación administrativa e historial           | Excepciones de transporte y conciliación con pagos externos                                                                            |
+| CU15 Analizar uso del vestidor               | Pendiente                     | Eventos básicos de la experiencia 3D                                                                                                                                                                  | Embudo AR, fallos, cobertura, conversión atribuible e idempotencia analítica visible                                                   |
+| CU16 Probar prendas                          | Parcial con cambio de alcance | Visor 3D existente y prototipo AR Android con detección de pose y superposición                                                                                                                       | Formalizar sustitución por RA; fotogramas continuos, anclajes, deformación, oclusión y calibración real                                |
+| CU17 Recomendar reposición                   | Parcial                       | Propuestas persistidas de reposición o traslado con explicación                                                                                                                                       | Revisión, confirmación, rechazo y ejecución controlada del movimiento                                                                  |
+| CU18 Buscar prendas por imagen               | Pendiente                     | Recursos gráficos del catálogo                                                                                                                                                                        | Carga segura, extracción de características, comparación, puntaje y resultados enlazados                                               |
+| CU19 Detectar anomalías                      | Parcial                       | Detección de ventas semanales atípicas con evidencia                                                                                                                                                  | Ajustes y devoluciones, detalle, revisión humana, estados y umbrales configurables                                                     |
+| CU20 Predecir demanda                        | Parcial                       | Promedio móvil ponderado, horizonte, intervalo, persistencia y versión                                                                                                                                | Evaluación histórica del error, gráficos y comparación entre modelos                                                                   |
+| CU21 Gestionar notificaciones                | Pendiente                     | Tablas de notificación, dispositivo y outbox                                                                                                                                                          | Generación por eventos, bandeja, lectura, preferencias, intentos y push                                                                |
+| CU22 Consultar analítica en lenguaje natural | Parcial                       | Intenciones locales de ventas e inventario, solo lectura y rechazo de escritura                                                                                                                       | Modelo externo o intérprete más amplio, períodos expresados en lenguaje natural y registro completo de consultas                       |
+| CU23 Generar avatar desde fotografías        | Parcial y legado              | Consentimiento, tres vistas, cola, procesamiento Python, GLB y purga                                                                                                                                  | Validación con fotos reales, orientación, cuerpo visible, precisión y calibración; deja de ser el flujo prioritario por el cambio a RA |
+| CU24 Gestionar recursos de prendas           | Parcial con cambio de alcance | GLB iniciales y administración de PNG AR por variante con borrador y publicación                                                                                                                      | Validación/versionado de GLB si se conserva 3D y validación visual/calibración de recursos RA reales                                   |
+| CU25 Revisar y eliminar avatar               | Parcial y legado              | Revisión, aprobación, sustitución de versión y eliminación verificada                                                                                                                                 | Corrección de medidas y regeneración versionada; definir retiro del flujo al consolidar RA                                             |
 
 ## Revisión de los requisitos funcionales
 
-| Requisito | Estado | Resultado de la comprobación |
-| --- | --- | --- |
-| RF01 | Parcial | Se registran clientes y personal, pero faltan teléfono administrable y gestión completa del estado. |
-| RF02 | Pendiente | No hay actualización, suspensión y reactivación administrativa con auditoría. |
-| RF03 | Pendiente | No existe gestión de perfil, direcciones y medidas declaradas. |
-| RF04 | Verificado | Sesiones web y móviles tienen acceso corto, renovación revocable y logout probado. |
-| RF05 | Parcial | Se asignan roles existentes, pero no se crean ni administran roles desde el sistema. |
-| RF06 | Verificado | Los permisos y la limitación por ubicaciones asignadas se aplican y están probados. |
-| RF07 | Verificado | La prenda almacena categoría, colección, marca, material y descripción. |
-| RF08 | Parcial | Se crean variantes por talla y color con SKU; falta administración del código de barras. |
-| RF09 | Parcial | Hay precio WEB y galería de fotos; faltan descuentos y vigencias administrables. |
-| RF10 | Parcial | Hay publicación y filtros de ubicación, marca, color y talla; faltan canal, categoría, precio y ordenamiento completos. |
-| RF11 | Parcial | Se administran sucursales y almacenes y se asigna personal; faltan cajas jerárquicas. |
-| RF12 | Verificado | Se consultan saldos físico, reservado, comprometido y disponible, con eventos de inventario. |
-| RF13 | Verificado | Ajustes, conteos, transferencias y salidas conservan motivo, responsable y cantidades. |
-| RF14 | Verificado | Las reservas evitan sobreventa, vencen y existen alertas de stock bajo. |
-| RF15 | Parcial con cambio | El vestidor 3D exige avatar aprobado, pero la experiencia prioritaria cambió a RA. |
-| RF16 | Parcial con cambio | Hay GLB iniciales y recursos PNG AR; falta contrato y validación administrativa completos. |
-| RF17 | Parcial con cambio | El visor 3D permite rotación y zoom; RA no ofrece todavía equivalencia funcional completa. |
-| RF18 | Parcial | Se eligen talla y color; falta cubrir incompatibilidades y recursos para todas las variantes. |
-| RF19 | Parcial | Se registran pruebas 3D, pero la selección AR aún no se transfiere al carrito ni alimenta analítica completa. |
-| RF20 | Parcial | El carrito persiste cantidades y precios; faltan descuentos y validación inmediata completa. |
-| RF21 | Parcial | Se crea pedido con reserva y totales, pero la dirección es texto libre y no hay opciones de entrega. |
-| RF22 | Parcial | Hay idempotencia y eventos simulados; no existe pasarela externa verificada. |
-| RF23 | Pendiente | No están implementados preparación, despacho, entrega y cierre con historial. |
-| RF24 | Parcial | Se solicita devolución, pero faltan resolución, inspección y reembolso. |
-| RF25 | Parcial | Los reportes cubren ventas, pedidos e inventario; faltan cajas y uso de AR. |
-| RF26 | Parcial | Solo se detectan ventas atípicas; faltan devoluciones, ajustes y revisión humana. |
-| RF27 | Parcial | La demanda se estima y persiste; falta medir el error histórico. |
-| RF28 | Parcial | El intérprete local admite intenciones limitadas de solo lectura; falta cobertura avanzada. |
-| RF29 | Parcial | Se crean propuestas explicables; falta confirmarlas y ejecutar el movimiento. |
-| RF30 | Pendiente | No hay publicación de avisos. |
-| RF31 | Pendiente | No se generan ni envían notificaciones de negocio. |
-| RF32 | Pendiente | No existe administración de preferencias, plantillas, entregas o dispositivos. |
-| RF33 | Pendiente | No existe configuración funcional de moneda, impuestos, entrega, reserva y devoluciones. |
-| RF34 | Pendiente | No existe una interfaz segura de referencias de integración. |
-| RF35 | Pendiente | Hay trazabilidad especializada en stock y pedidos, pero no auditoría transversal de operaciones críticas. |
-| RF36 | Verificado | La captura requiere consentimiento versionado y explica su finalidad y eliminación. |
-| RF37 | Verificado | Se reciben frente, perfil, espalda y altura. |
-| RF38 | Parcial | Se validan formato y presencia; faltan orientación, persona única y cuerpo completo con evidencia real. |
-| RF39 | Parcial | El proceso estima proporciones y produce GLB versionado; falta validar precisión con personas reales. |
-| RF40 | Verificado | Hay progreso, cola, reintentos limitados e idempotencia. |
-| RF41 | Parcial | Se revisa y aprueba una versión; falta corregir medidas y regenerar. |
-| RF42 | Verificado | La eliminación revoca acceso y purga archivos y datos; las fotos temporales se eliminan. |
-| RF43 | Parcial con cambio | Hay modelos GLB iniciales y publicación PNG AR; faltan validación, versionado y cobertura de variantes. |
-| RF44 | Pendiente | No existe búsqueda de prendas por imagen. |
+| Requisito | Estado             | Resultado de la comprobación                                                                                                                                                               |
+| --------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| RF01      | Parcial            | Se registran clientes y personal, pero faltan teléfono administrable y gestión completa del estado.                                                                                        |
+| RF02      | Pendiente          | No hay actualización, suspensión y reactivación administrativa con auditoría.                                                                                                              |
+| RF03      | Pendiente          | No existe gestión de perfil, direcciones y medidas declaradas.                                                                                                                             |
+| RF04      | Verificado         | Sesiones web y móviles tienen acceso corto, renovación revocable y logout probado.                                                                                                         |
+| RF05      | Parcial            | Se asignan roles existentes, pero no se crean ni administran roles desde el sistema.                                                                                                       |
+| RF06      | Verificado         | Los permisos y la limitación por ubicaciones asignadas se aplican y están probados.                                                                                                        |
+| RF07      | Verificado         | La prenda almacena categoría, colección, marca, material y descripción.                                                                                                                    |
+| RF08      | Parcial            | Se crean variantes por talla y color con SKU; falta administración del código de barras.                                                                                                   |
+| RF09      | Parcial            | Hay precio WEB y galería de fotos; faltan descuentos y vigencias administrables.                                                                                                           |
+| RF10      | Parcial            | Hay publicación y filtros de ubicación, marca, color y talla; faltan canal, categoría, precio y ordenamiento completos.                                                                    |
+| RF11      | Parcial            | Se administran sucursales y almacenes y se asigna personal; faltan cajas jerárquicas.                                                                                                      |
+| RF12      | Verificado         | Se consultan saldos físico, reservado, comprometido y disponible, con eventos de inventario.                                                                                               |
+| RF13      | Verificado         | Ajustes, conteos, transferencias y salidas conservan motivo, responsable y cantidades.                                                                                                     |
+| RF14      | Verificado         | Las reservas evitan sobreventa, vencen y existen alertas de stock bajo.                                                                                                                    |
+| RF15      | Parcial con cambio | El vestidor 3D exige avatar aprobado, pero la experiencia prioritaria cambió a RA.                                                                                                         |
+| RF16      | Parcial con cambio | Hay GLB iniciales y recursos PNG AR; falta contrato y validación administrativa completos.                                                                                                 |
+| RF17      | Parcial con cambio | El visor 3D permite rotación y zoom; RA no ofrece todavía equivalencia funcional completa.                                                                                                 |
+| RF18      | Parcial            | Se eligen talla y color; falta cubrir incompatibilidades y recursos para todas las variantes.                                                                                              |
+| RF19      | Parcial            | Se registran pruebas 3D, pero la selección AR aún no se transfiere al carrito ni alimenta analítica completa.                                                                              |
+| RF20      | Parcial            | El carrito persiste cantidades y precios; faltan descuentos y validación inmediata completa.                                                                                               |
+| RF21      | Parcial            | Se crea pedido con reserva y totales, pero la dirección es texto libre y no hay opciones de entrega.                                                                                       |
+| RF22      | Parcial            | Hay idempotencia y eventos simulados; no existe pasarela externa verificada.                                                                                                               |
+| RF23      | Pendiente          | No están implementados preparación, despacho, entrega y cierre con historial.                                                                                                              |
+| RF24      | Parcial            | Se solicita y revisa la devolución, se registra inspección por cantidad apta, reintegro condicionado y reembolso simulado; falta la integración financiera real y políticas configurables. |
+| RF25      | Parcial            | Los reportes cubren ventas, pedidos e inventario; faltan cajas y uso de AR.                                                                                                                |
+| RF26      | Parcial            | Solo se detectan ventas atípicas; faltan devoluciones, ajustes y revisión humana.                                                                                                          |
+| RF27      | Parcial            | La demanda se estima y persiste; falta medir el error histórico.                                                                                                                           |
+| RF28      | Parcial            | El intérprete local admite intenciones limitadas de solo lectura; falta cobertura avanzada.                                                                                                |
+| RF29      | Parcial            | Se crean propuestas explicables; falta confirmarlas y ejecutar el movimiento.                                                                                                              |
+| RF30      | Pendiente          | No hay publicación de avisos.                                                                                                                                                              |
+| RF31      | Pendiente          | No se generan ni envían notificaciones de negocio.                                                                                                                                         |
+| RF32      | Pendiente          | No existe administración de preferencias, plantillas, entregas o dispositivos.                                                                                                             |
+| RF33      | Pendiente          | No existe configuración funcional de moneda, impuestos, entrega, reserva y devoluciones.                                                                                                   |
+| RF34      | Pendiente          | No existe una interfaz segura de referencias de integración.                                                                                                                               |
+| RF35      | Pendiente          | Hay trazabilidad especializada en stock y pedidos, pero no auditoría transversal de operaciones críticas.                                                                                  |
+| RF36      | Verificado         | La captura requiere consentimiento versionado y explica su finalidad y eliminación.                                                                                                        |
+| RF37      | Verificado         | Se reciben frente, perfil, espalda y altura.                                                                                                                                               |
+| RF38      | Parcial            | Se validan formato y presencia; faltan orientación, persona única y cuerpo completo con evidencia real.                                                                                    |
+| RF39      | Parcial            | El proceso estima proporciones y produce GLB versionado; falta validar precisión con personas reales.                                                                                      |
+| RF40      | Verificado         | Hay progreso, cola, reintentos limitados e idempotencia.                                                                                                                                   |
+| RF41      | Parcial            | Se revisa y aprueba una versión; falta corregir medidas y regenerar.                                                                                                                       |
+| RF42      | Verificado         | La eliminación revoca acceso y purga archivos y datos; las fotos temporales se eliminan.                                                                                                   |
+| RF43      | Parcial con cambio | Hay modelos GLB iniciales y publicación PNG AR; faltan validación, versionado y cobertura de variantes.                                                                                    |
+| RF44      | Pendiente          | No existe búsqueda de prendas por imagen.                                                                                                                                                  |
 
 ## Funciones de la rama frente al documento
 
-| Función encontrada | Decisión de alcance |
-| --- | --- |
-| Sucursales, almacenes y personal asignado | Ya corresponde a RF06, RF11, RF12 y RF13; se mantiene en el sistema y se detalla en la actualización documental. |
-| Catálogo común para todas las ubicaciones con stock inicial cero | Extensión coherente de RF07 a RF12; se incorpora como regla de negocio explícita. |
-| Galería de 1 a 8 fotos por prenda | Corresponde a RF09; se detalla su límite, formato y autorización. |
-| Filtros combinados de sucursal, marca, color y talla | Corresponde a RF10; se documenta que talla y color deben pertenecer a la misma variante. |
-| Punto de venta para Administrador y Vendedor | Se integra como flujo presencial de CU09, CU13 y CU14. |
-| React Native, cámara móvil y MediaPipe | Cambio de alcance no presente en la línea base; se incorpora como sustitución prioritaria de CU16 y extensión de CU24. |
-| Recursos PNG transparentes para RA por variante | Cambio de alcance; se documentan borrador, publicación, licencia y texto alternativo. |
-| WebSocket para disponibilidad | Implementación técnica de RF12; solo transporta eventos, nunca video. |
-| Pago web simulado | Se documenta únicamente como mecanismo de pruebas, no como cumplimiento de RF22. |
-| Resúmenes, predicción, anomalías y consultas locales | Se alinean con RF25 a RF29. No deben presentarse como informes generados por una IA externa. |
+| Función encontrada                                               | Decisión de alcance                                                                                                    |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Sucursales, almacenes y personal asignado                        | Ya corresponde a RF06, RF11, RF12 y RF13; se mantiene en el sistema y se detalla en la actualización documental.       |
+| Catálogo común para todas las ubicaciones con stock inicial cero | Extensión coherente de RF07 a RF12; se incorpora como regla de negocio explícita.                                      |
+| Galería de 1 a 8 fotos por prenda                                | Corresponde a RF09; se detalla su límite, formato y autorización.                                                      |
+| Filtros combinados de sucursal, marca, color y talla             | Corresponde a RF10; se documenta que talla y color deben pertenecer a la misma variante.                               |
+| Punto de venta para Administrador y Vendedor                     | Se integra como flujo presencial de CU09, CU13 y CU14.                                                                 |
+| React Native, cámara móvil y MediaPipe                           | Cambio de alcance no presente en la línea base; se incorpora como sustitución prioritaria de CU16 y extensión de CU24. |
+| Recursos PNG transparentes para RA por variante                  | Cambio de alcance; se documentan borrador, publicación, licencia y texto alternativo.                                  |
+| WebSocket para disponibilidad                                    | Implementación técnica de RF12; solo transporta eventos, nunca video.                                                  |
+| Pago web simulado                                                | Se documenta únicamente como mecanismo de pruebas, no como cumplimiento de RF22.                                       |
+| Resúmenes, predicción, anomalías y consultas locales             | Se alinean con RF25 a RF29. No deben presentarse como informes generados por una IA externa.                           |
 
 ## Orden recomendado para cerrar el alcance
 
 1. Completar CU01, CU03 y CU07 para que usuarios, roles, perfil y direcciones sean administrables sin scripts.
 2. Completar CU04, CU05 y CU13 para cerrar catálogo, descuentos, reglas y disponibilidad por canal.
-3. Completar CU11 y CU14 con estados del pedido, cancelación, devolución, reintegro y reembolso.
+3. Completar CU11 y CU14 con políticas configurables, etapas de recepción física, excepciones de transporte y reembolsos mediante pasarela real.
 4. Implementar CU06 y CU21 para avisos, bandeja y notificaciones por eventos.
 5. Cerrar CU10, CU17, CU19, CU20 y CU22 con exportación, revisión humana, ejecución autorizada y evaluación de modelos.
 6. Implementar CU18 y terminar la experiencia AR con recursos reales, seguimiento continuo, oclusión y pruebas físicas.
