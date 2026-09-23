@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -15,10 +15,9 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { API_URL } from './api';
+import { API_URL, api } from './api';
+import { MobileCommerceSheet, type MobileCartLine, type MobileOrder } from './MobileCommerceSheet';
 import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
-
-type CartLine = { product: Product; variant: Variant; quantity: number };
 
 type Props = {
   user: Identity;
@@ -39,6 +38,7 @@ type Props = {
   onCategoryChange: (value: string) => void;
   onClearFilters: () => void;
   onTryAr: (product: Product, variant: Variant) => void;
+  onCatalogRefresh: () => Promise<void>;
   onAdminMode?: () => void;
   onLogout: () => void;
 };
@@ -49,6 +49,14 @@ const money = (amount: number) => `Bs. ${Number(amount).toFixed(amount % 1 ? 2 :
 function productImage(product: Product) {
   const image = product.imagenes?.[0];
   return image ? `${serverUrl}${image.url}` : null;
+}
+
+function operationId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 export function CatalogScreen({
@@ -70,6 +78,7 @@ export function CatalogScreen({
   onCategoryChange,
   onClearFilters,
   onTryAr,
+  onCatalogRefresh,
   onAdminMode,
   onLogout,
 }: Props) {
@@ -83,7 +92,11 @@ export function CatalogScreen({
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
-  const [cart, setCart] = useState<Record<string, CartLine>>({});
+  const [cartLines, setCartLines] = useState<MobileCartLine[]>([]);
+  const [orders, setOrders] = useState<MobileOrder[]>([]);
+  const [commerceBusy, setCommerceBusy] = useState(false);
+  const [commerceError, setCommerceError] = useState('');
+  const [commerceMessage, setCommerceMessage] = useState('');
 
   const products = useMemo(
     () =>
@@ -92,13 +105,9 @@ export function CatalogScreen({
         : catalog.products,
     [catalog.products, favorites, favoritesOnly],
   );
-  const cartLines = Object.values(cart);
   const cartCount = cartLines.reduce((total, line) => total + line.quantity, 0);
   const favoriteCount = Object.values(favorites).filter(Boolean).length;
-  const subtotal = cartLines.reduce(
-    (total, line) => total + Number(line.variant.precio) * line.quantity,
-    0,
-  );
+  const subtotal = cartLines.reduce((total, line) => total + Number(line.price) * line.quantity, 0);
   const activeFilters = [brand, color, size, category].filter(Boolean).length;
 
   function variantFor(product: Product) {
@@ -108,27 +117,139 @@ export function CatalogScreen({
     );
   }
 
-  function addToCart(product: Product, variant: Variant) {
-    if (variant.disponible <= 0) return;
-    setCart((current) => {
-      const existing = current[variant.id];
-      const quantity = Math.min((existing?.quantity || 0) + 1, variant.disponible);
-      return { ...current, [variant.id]: { product, variant, quantity } };
-    });
+  async function loadCommerce() {
+    try {
+      const [serverCart, nextOrders, locationCatalog] = await Promise.all([
+        api('/commerce/cart'),
+        api('/commerce/orders'),
+        location
+          ? api(`/catalog?channel=APP&location=${encodeURIComponent(location.id)}`)
+          : Promise.resolve(catalog),
+      ]);
+      const indexed = new Map<string, { product: Product; variant: Variant }>();
+      for (const product of (locationCatalog as Catalog).products)
+        for (const variant of product.variantes) indexed.set(variant.id, { product, variant });
+      setCartLines(
+        serverCart.item_carrito.map(
+          (item: {
+            variante_id: string;
+            cantidad: number;
+            variante: {
+              talla: string;
+              color: string;
+              producto: { nombre: string; marca?: string | null };
+            };
+          }) => {
+            const current = indexed.get(item.variante_id);
+            return {
+              variantId: item.variante_id,
+              quantity: item.cantidad,
+              productName: current?.product.nombre || item.variante.producto.nombre,
+              brand: current?.product.marca || item.variante.producto.marca || 'Sin marca',
+              size: current?.variant.talla || item.variante.talla,
+              color: current?.variant.color || item.variante.color,
+              price: Number(current?.variant.precio || 0),
+              available: current?.variant.disponible || 0,
+              imageUrl: current ? productImage(current.product) : null,
+            } satisfies MobileCartLine;
+          },
+        ),
+      );
+      setOrders(nextOrders);
+    } catch (reason) {
+      setCommerceError((reason as Error).message);
+    }
   }
 
-  function changeQuantity(variantId: string, delta: number) {
-    setCart((current) => {
-      const line = current[variantId];
-      if (!line) return current;
-      const quantity = Math.min(line.variant.disponible, line.quantity + delta);
-      if (quantity <= 0) {
-        const next = { ...current };
-        delete next[variantId];
-        return next;
-      }
-      return { ...current, [variantId]: { ...line, quantity } };
-    });
+  useEffect(() => {
+    void loadCommerce();
+  }, [location?.id]);
+
+  async function addToCart(variant: Variant) {
+    if (variant.disponible <= 0) return;
+    const existing = cartLines.find((line) => line.variantId === variant.id);
+    const quantity = Math.min((existing?.quantity || 0) + 1, variant.disponible);
+    setCommerceBusy(true);
+    setCommerceError('');
+    setCommerceMessage('');
+    try {
+      await api('/commerce/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ variantId: variant.id, quantity }),
+      });
+      await loadCommerce();
+      setCommerceMessage('Prenda agregada al carrito.');
+    } catch (reason) {
+      setCommerceError((reason as Error).message);
+    } finally {
+      setCommerceBusy(false);
+    }
+  }
+
+  async function changeQuantity(variantId: string, quantity: number) {
+    setCommerceBusy(true);
+    setCommerceError('');
+    setCommerceMessage('');
+    try {
+      await api('/commerce/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ variantId, quantity: Math.max(0, quantity) }),
+      });
+      await loadCommerce();
+    } catch (reason) {
+      setCommerceError((reason as Error).message);
+    } finally {
+      setCommerceBusy(false);
+    }
+  }
+
+  async function checkout(address: string) {
+    if (!location) return false;
+    setCommerceBusy(true);
+    setCommerceError('');
+    setCommerceMessage('');
+    try {
+      const order = await api('/commerce/checkout', {
+        method: 'POST',
+        body: JSON.stringify({
+          locationId: location.id,
+          address,
+          idempotency: operationId(),
+        }),
+      });
+      setCommerceMessage(
+        `Pedido ${order.numero} creado. Completa el pago de prueba antes de 15 minutos.`,
+      );
+      await Promise.all([loadCommerce(), onCatalogRefresh()]);
+      return true;
+    } catch (reason) {
+      setCommerceError((reason as Error).message);
+      return false;
+    } finally {
+      setCommerceBusy(false);
+    }
+  }
+
+  async function pay(orderId: string, decision: 'APROBAR' | 'RECHAZAR') {
+    setCommerceBusy(true);
+    setCommerceError('');
+    setCommerceMessage('');
+    try {
+      await api(`/commerce/orders/${orderId}/payment`, {
+        method: 'POST',
+        body: JSON.stringify({ decision, idempotency: operationId() }),
+      });
+      setCommerceMessage(
+        decision === 'APROBAR'
+          ? 'Pago de prueba aprobado. El pedido quedó confirmado.'
+          : 'Pago de prueba rechazado. La reserva fue liberada.',
+      );
+      await Promise.all([loadCommerce(), onCatalogRefresh()]);
+    } catch (reason) {
+      setCommerceError((reason as Error).message);
+    } finally {
+      setCommerceBusy(false);
+    }
   }
 
   function resetHome() {
@@ -385,9 +506,12 @@ export function CatalogScreen({
                     <Text style={styles.arButtonText}>◇ AR</Text>
                   </Pressable>
                   <Pressable
-                    disabled={!available}
-                    style={[styles.addButton, !available && styles.buttonDisabled]}
-                    onPress={() => addToCart(item, variant)}
+                    disabled={!available || commerceBusy}
+                    style={[
+                      styles.addButton,
+                      (!available || commerceBusy) && styles.buttonDisabled,
+                    ]}
+                    onPress={() => void addToCart(variant)}
                   >
                     <Text style={styles.addButtonText}>{available ? '+ Agregar' : 'Agotado'}</Text>
                   </Pressable>
@@ -431,12 +555,22 @@ export function CatalogScreen({
         onClose={() => setFiltersOpen(false)}
       />
 
-      <CartSheet
+      <MobileCommerceSheet
         visible={cartOpen}
         lines={cartLines}
+        orders={orders}
         subtotal={subtotal}
+        locations={catalog.locations}
+        location={location}
+        busy={commerceBusy}
+        error={commerceError}
+        message={commerceMessage}
         onClose={() => setCartOpen(false)}
+        onLocationChange={onLocationChange}
         onChangeQuantity={changeQuantity}
+        onCheckout={checkout}
+        onPay={pay}
+        onReload={loadCommerce}
       />
 
       <Modal
@@ -668,114 +802,6 @@ function FilterSheet({
             </Pressable>
             <Pressable style={styles.applyButton} onPress={onClose}>
               <Text style={styles.applyButtonText}>Ver resultados</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-function CartSheet({
-  visible,
-  lines,
-  subtotal,
-  onClose,
-  onChangeQuantity,
-}: {
-  visible: boolean;
-  lines: CartLine[];
-  subtotal: number;
-  onClose: () => void;
-  onChangeQuantity: (variantId: string, delta: number) => void;
-}) {
-  return (
-    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.sheetOverlay}>
-        <Pressable style={styles.sheetDismiss} onPress={onClose} />
-        <View style={[styles.sheet, styles.cartSheet]}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetHeader}>
-            <View>
-              <Text style={styles.sheetTitle}>
-                Mi carrito ({lines.reduce((total, line) => total + line.quantity, 0)})
-              </Text>
-              <Text style={styles.sheetSubtitle}>Prendas seleccionadas</Text>
-            </View>
-            <Pressable style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeText}>×</Text>
-            </Pressable>
-          </View>
-          {lines.length ? (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {lines.map((line) => {
-                const image = productImage(line.product);
-                return (
-                  <View key={line.variant.id} style={styles.cartLine}>
-                    {image ? (
-                      <Image
-                        source={{ uri: image }}
-                        style={styles.cartImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.cartImage,
-                          { backgroundColor: line.variant.color_hex || '#ddd' },
-                        ]}
-                      />
-                    )}
-                    <View style={styles.cartCopy}>
-                      <Text numberOfLines={1} style={styles.cartName}>
-                        {line.product.nombre}
-                      </Text>
-                      <Text style={styles.cartMeta}>
-                        {line.product.marca || 'Sin marca'} · Talla {line.variant.talla}
-                      </Text>
-                      <Text style={styles.cartPrice}>{money(line.variant.precio)}</Text>
-                    </View>
-                    <View style={styles.quantity}>
-                      <Pressable
-                        style={styles.quantityButton}
-                        onPress={() => onChangeQuantity(line.variant.id, -1)}
-                      >
-                        <Text style={styles.quantityText}>−</Text>
-                      </Pressable>
-                      <Text style={styles.quantityValue}>{line.quantity}</Text>
-                      <Pressable
-                        style={styles.quantityButton}
-                        onPress={() => onChangeQuantity(line.variant.id, 1)}
-                      >
-                        <Text style={styles.quantityText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyCart}>
-              <Text style={styles.emptyCartIcon}>⌑</Text>
-              <Text style={styles.emptyTitle}>Tu carrito está vacío</Text>
-              <Text style={styles.emptyCartText}>
-                Agrega prendas del catálogo para verlas aquí.
-              </Text>
-            </View>
-          )}
-          <View style={styles.cartFooter}>
-            <View style={styles.subtotalRow}>
-              <Text style={styles.subtotalLabel}>Subtotal</Text>
-              <Text style={styles.subtotalValue}>{money(subtotal)}</Text>
-            </View>
-            <Pressable
-              style={[styles.applyButton, !lines.length && styles.buttonDisabled]}
-              disabled={!lines.length}
-              onPress={onClose}
-            >
-              <Text style={styles.applyButtonText}>
-                {lines.length ? 'Seguir comprando  →' : 'Agrega una prenda'}
-              </Text>
             </Pressable>
           </View>
         </View>
@@ -1157,7 +1183,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === 'ios' ? 30 : 18,
   },
-  cartSheet: { minHeight: '64%' },
   sheetHandle: {
     alignSelf: 'center',
     width: 42,
@@ -1220,41 +1245,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   applyButtonText: { color: '#fff', fontWeight: '800' },
-  cartLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: line,
-    gap: 10,
-  },
-  cartImage: { width: 62, height: 72, borderRadius: 7, backgroundColor: '#f2f2ed' },
-  cartCopy: { flex: 1 },
-  cartName: { color: '#1f2923', fontSize: 12, fontWeight: '800' },
-  cartMeta: { color: '#858b86', fontSize: 9, marginTop: 3 },
-  cartPrice: { color: '#152119', fontSize: 12, fontWeight: '900', marginTop: 6 },
-  quantity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#dddeda',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  quantityButton: {
-    width: 27,
-    height: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f7f7f3',
-  },
-  quantityText: { color: '#334139', fontSize: 15 },
-  quantityValue: { width: 25, textAlign: 'center', color: '#202b24', fontSize: 11 },
-  emptyCart: { flex: 1, minHeight: 230, alignItems: 'center', justifyContent: 'center' },
-  emptyCartIcon: { color: '#96a099', fontSize: 44 },
-  emptyCartText: { color: '#808681', fontSize: 11, marginTop: 6 },
-  cartFooter: { paddingTop: 15, borderTopWidth: 1, borderTopColor: line },
-  subtotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 13 },
-  subtotalLabel: { color: '#374139', fontSize: 13, fontWeight: '700' },
-  subtotalValue: { color: '#132018', fontSize: 18, fontWeight: '900' },
 });

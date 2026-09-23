@@ -40,6 +40,16 @@ const returnRequest = z
   })
   .strict();
 
+type CommerceChannel = 'WEB' | 'APP';
+
+function requestChannel(req: AuthRequest): CommerceChannel {
+  return String(req.headers['x-client-channel'] ?? '').toUpperCase() === 'APP' ? 'APP' : 'WEB';
+}
+
+function simulatedProvider(channel: CommerceChannel) {
+  return channel === 'APP' ? 'SIMULADO_APP' : 'SIMULADO_WEB';
+}
+
 @Controller('commerce')
 @UseGuards(AuthGuard)
 export class CommerceController implements OnModuleInit, OnModuleDestroy {
@@ -62,14 +72,14 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     if (this.expiryTimer) timers.clearInterval(this.expiryTimer);
   }
 
-  private async activeCart(userId: string) {
+  private async activeCart(userId: string, channel: CommerceChannel) {
     return (
       (await this.db.carrito.findFirst({
-        where: { usuario_id: userId, canal: 'WEB', estado: 'ACTIVO' },
+        where: { usuario_id: userId, canal: channel, estado: 'ACTIVO' },
         orderBy: { actualizado_en: 'desc' },
       })) ??
       this.db.carrito.create({
-        data: { usuario_id: userId, canal: 'WEB', estado: 'ACTIVO', actualizado_en: new Date() },
+        data: { usuario_id: userId, canal: channel, estado: 'ACTIVO', actualizado_en: new Date() },
       })
     );
   }
@@ -77,7 +87,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   private async releaseExpired() {
     const expired = await this.db.pedido.findMany({
       where: {
-        canal: 'WEB',
+        canal: { in: ['WEB', 'APP'] },
         estado: 'PENDIENTE_PAGO',
         detalle_pedido: {
           some: { reserva_stock: { some: { estado: 'ACTIVA', vence_en: { lte: new Date() } } } },
@@ -160,11 +170,13 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           data: { estado: event ? 'RECHAZADO' : 'CANCELADO' },
         });
       }
-      if (event)
+      if (event) {
+        const provider = order.pago[0]?.proveedor;
+        if (!provider) throw new BadRequestException('Pago no disponible.');
         await tx.evento_pago.create({
           data: {
             pago_id: order.pago[0].id,
-            proveedor: 'SIMULADO_WEB',
+            proveedor: provider,
             evento_externo: event.id,
             tipo: event.decision,
             firma_verificada: true,
@@ -173,6 +185,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             procesado_en: now,
           },
         });
+      }
       return {
         locationId: order.ubicacion_id,
         variantIds: order.detalle_pedido.map((line) => line.variante_id),
@@ -188,7 +201,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
 
   @Get('cart')
   async getCart(@Req() req: AuthRequest) {
-    const cart = await this.activeCart(req.user.id);
+    const cart = await this.activeCart(req.user.id, requestChannel(req));
     return this.db.carrito.findUniqueOrThrow({
       where: { id: cart.id },
       include: { item_carrito: { include: { variante: { include: { producto: true } } } } },
@@ -198,7 +211,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   @Post('cart/items')
   async setItem(@Req() req: AuthRequest, @Body() body: unknown) {
     const input = cartItem.parse(body);
-    const cart = await this.activeCart(req.user.id);
+    const cart = await this.activeCart(req.user.id, requestChannel(req));
     if (input.quantity > 0) {
       const variant = await this.db.variante.findFirst({
         where: { id: input.variantId, activa: true, producto: { estado: 'PUBLICADO' } },
@@ -222,7 +235,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   async orders(@Req() req: AuthRequest) {
     await this.releaseExpired();
     return this.db.pedido.findMany({
-      where: { usuario_id: req.user.id, canal: 'WEB' },
+      where: { usuario_id: req.user.id, canal: requestChannel(req) },
       orderBy: { creado_en: 'desc' },
       take: 20,
       include: {
@@ -236,17 +249,18 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   @Post('checkout')
   async placeOrder(@Req() req: AuthRequest, @Body() body: unknown) {
     const input = checkout.parse(body);
+    const channel = requestChannel(req);
     await this.releaseExpired();
     const previous = await this.db.pedido.findUnique({
       where: { idempotencia: input.idempotency },
       include: { detalle_pedido: true, pago: true },
     });
     if (previous) {
-      if (previous.usuario_id !== req.user.id)
+      if (previous.usuario_id !== req.user.id || previous.canal !== channel)
         throw new BadRequestException('Este identificador ya fue utilizado.');
       return previous;
     }
-    const cart = await this.activeCart(req.user.id);
+    const cart = await this.activeCart(req.user.id, channel);
     const order = await this.db.$transaction(
       async (tx) => {
         const location = await tx.ubicacion.findFirst({
@@ -266,17 +280,17 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           const price = await tx.precio_canal.findFirst({
             where: {
               variante_id: item.variante_id,
-              canal: 'WEB',
+              canal: channel,
               desde: { lte: now },
               OR: [{ hasta: null }, { hasta: { gt: now } }],
             },
             orderBy: { desde: 'desc' },
           });
-          const channel = await tx.disponibilidad_canal.findFirst({
+          const availability = await tx.disponibilidad_canal.findFirst({
             where: {
               variante_id: item.variante_id,
               ubicacion_id: input.locationId,
-              canal: 'WEB',
+              canal: channel,
               habilitada: true,
             },
           });
@@ -288,24 +302,26 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
               },
             },
           });
-          if (!price || !channel || !inventory)
-            throw new BadRequestException(`No disponible para compra web: ${item.variante.sku}.`);
+          if (!price || !availability || !inventory)
+            throw new BadRequestException(
+              `No disponible para compra en ${channel === 'APP' ? 'la aplicación' : 'la web'}: ${item.variante.sku}.`,
+            );
           const unit = Number(
             (Number(price.importe) * (1 - Number(price.descuento_pct) / 100)).toFixed(2),
           );
-          lines.push({ item, inventory, unit, security: channel.stock_seguridad });
+          lines.push({ item, inventory, unit, security: availability.stock_seguridad });
         }
         const total = Number(
           lines.reduce((sum, line) => sum + line.unit * line.item.cantidad, 0).toFixed(2),
         );
-        const number = `WEB-${now.toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().slice(0, 8)}`;
+        const number = `${channel}-${now.toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().slice(0, 8)}`;
         const order = await tx.pedido.create({
           data: {
             usuario_id: req.user.id,
             ubicacion_id: input.locationId,
             carrito_id: cart.id,
             numero: number,
-            canal: 'WEB',
+            canal: channel,
             moneda: 'BOB',
             subtotal: total,
             descuento: 0,
@@ -313,7 +329,11 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             entrega: 0,
             total,
             direccion_snapshot: { detalle: input.address },
-            reglas_snapshot: { tipo: 'COMPRA_WEB', pago: 'SIMULADO', reservaMinutos: 15 },
+            reglas_snapshot: {
+              tipo: channel === 'APP' ? 'COMPRA_APP' : 'COMPRA_WEB',
+              pago: 'SIMULADO',
+              reservaMinutos: 15,
+            },
             estado: 'PENDIENTE_PAGO',
             creado_en: now,
             idempotencia: input.idempotency,
@@ -361,7 +381,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
               delta_fisico: 0,
               delta_reservado: line.item.cantidad,
               delta_comprometido: 0,
-              motivo: `Reserva web ${number}`,
+              motivo: `Reserva ${channel === 'APP' ? 'app' : 'web'} ${number}`,
               actor_id: req.user.id,
               pedido_id: order.id,
               creado_en: now,
@@ -371,7 +391,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
         await tx.pago.create({
           data: {
             pedido_id: order.id,
-            proveedor: 'SIMULADO_WEB',
+            proveedor: simulatedProvider(channel),
             referencia: number,
             idempotencia: randomUUID(),
             monto: total,
@@ -402,18 +422,20 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   async pay(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
     uuid.parse(id);
     const input = paymentDecision.parse(body);
+    const channel = requestChannel(req);
+    const provider = simulatedProvider(channel);
     await this.releaseExpired();
     const order = await this.db.pedido.findFirst({
-      where: { id, usuario_id: req.user.id, canal: 'WEB' },
+      where: { id, usuario_id: req.user.id, canal: channel },
       include: { pago: true },
     });
     if (!order) throw new BadRequestException('Pedido no encontrado.');
     const payment = order.pago[0];
-    if (!payment || payment.proveedor !== 'SIMULADO_WEB')
+    if (!payment || payment.proveedor !== provider)
       throw new BadRequestException('Pago no disponible.');
     const prior = await this.db.evento_pago.findUnique({
       where: {
-        proveedor_evento_externo: { proveedor: 'SIMULADO_WEB', evento_externo: input.idempotency },
+        proveedor_evento_externo: { proveedor: provider, evento_externo: input.idempotency },
       },
     });
     if (prior && (prior.pago_id !== payment.id || prior.tipo !== input.decision))
@@ -449,47 +471,54 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   async requestReturn(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
     uuid.parse(id);
     const input = returnRequest.parse(body);
+    const channel = requestChannel(req);
     if (new Set(input.items.map((item) => item.detailId)).size !== input.items.length)
       throw new BadRequestException('Cada prenda debe aparecer una sola vez.');
-    return this.db.$transaction(async (tx) => {
-      const order = await tx.pedido.findFirst({
-        where: {
-          id,
-          usuario_id: req.user.id,
-          canal: 'WEB',
-          estado: { in: ['CONFIRMADO', 'PREPARANDO', 'DESPACHADO', 'ENTREGADO', 'CERRADO'] },
-        },
-        include: { detalle_pedido: true },
-      });
-      if (!order) throw new BadRequestException('El pedido no admite devolución.');
-      for (const item of input.items) {
-        const detail = order.detalle_pedido.find((row) => row.id === item.detailId);
-        if (!detail) throw new BadRequestException('La prenda no pertenece al pedido.');
-        const claimed = await tx.detalle_devolucion.aggregate({
-          where: { detalle_pedido_id: item.detailId, devolucion: { estado: { not: 'RECHAZADA' } } },
-          _sum: { cantidad: true },
-        });
-        if (item.quantity + (claimed._sum.cantidad ?? 0) > detail.cantidad)
-          throw new BadRequestException('La cantidad supera lo comprado o ya solicitado.');
-      }
-      return tx.devolucion.create({
-        data: {
-          pedido_id: id,
-          usuario_id: req.user.id,
-          tipo: 'DEVOLUCION',
-          estado: 'SOLICITADA',
-          motivo: input.reason,
-          solicitada_en: new Date(),
-          detalle_devolucion: {
-            create: input.items.map((item) => ({
-              detalle_pedido_id: item.detailId,
-              cantidad: item.quantity,
-              cantidad_apta: 0,
-            })),
+    return this.db.$transaction(
+      async (tx) => {
+        const order = await tx.pedido.findFirst({
+          where: {
+            id,
+            usuario_id: req.user.id,
+            canal: channel,
+            estado: { in: ['CONFIRMADO', 'PREPARANDO', 'DESPACHADO', 'ENTREGADO', 'CERRADO'] },
           },
-        },
-        include: { detalle_devolucion: true },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+          include: { detalle_pedido: true },
+        });
+        if (!order) throw new BadRequestException('El pedido no admite devolución.');
+        for (const item of input.items) {
+          const detail = order.detalle_pedido.find((row) => row.id === item.detailId);
+          if (!detail) throw new BadRequestException('La prenda no pertenece al pedido.');
+          const claimed = await tx.detalle_devolucion.aggregate({
+            where: {
+              detalle_pedido_id: item.detailId,
+              devolucion: { estado: { not: 'RECHAZADA' } },
+            },
+            _sum: { cantidad: true },
+          });
+          if (item.quantity + (claimed._sum.cantidad ?? 0) > detail.cantidad)
+            throw new BadRequestException('La cantidad supera lo comprado o ya solicitado.');
+        }
+        return tx.devolucion.create({
+          data: {
+            pedido_id: id,
+            usuario_id: req.user.id,
+            tipo: 'DEVOLUCION',
+            estado: 'SOLICITADA',
+            motivo: input.reason,
+            solicitada_en: new Date(),
+            detalle_devolucion: {
+              create: input.items.map((item) => ({
+                detalle_pedido_id: item.detailId,
+                cantidad: item.quantity,
+                cantidad_apta: 0,
+              })),
+            },
+          },
+          include: { detalle_devolucion: true },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 }

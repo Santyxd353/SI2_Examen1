@@ -26,6 +26,16 @@ async function main() {
       await client.query(
         readFileSync('prisma/migrations/20260920010000_ar_publicado_unico/migration.sql', 'utf8'),
       );
+    const activeCartIndex = await client.query(
+      "SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname='carrito_activo'",
+    );
+    if (!activeCartIndex.rows[0]?.indexdef.includes('(usuario_id, canal)'))
+      await client.query(
+        readFileSync(
+          'prisma/migrations/20260922000000_carrito_activo_por_canal/migration.sql',
+          'utf8',
+        ),
+      );
   }
   const db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   await seed(db);

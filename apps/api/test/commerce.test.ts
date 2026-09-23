@@ -42,6 +42,16 @@ beforeAll(async () => {
       plazo_reposicion_dias: 1,
     },
   });
+  await db.disponibilidad_canal.create({
+    data: {
+      variante_id: variantId,
+      ubicacion_id: locationId,
+      canal: 'APP',
+      habilitada: true,
+      stock_seguridad: 0,
+      plazo_reposicion_dias: 1,
+    },
+  });
   app = await createApp();
   const login = await request(app.getHttpServer())
     .post('/api/auth/register')
@@ -165,4 +175,55 @@ test('una reserva vencida cancela el pedido y devuelve el stock disponible', asy
   });
   expect(stock.reservado).toBe(0);
   expect(stock.fisico).toBe(2);
+});
+
+test('la aplicación mantiene carrito y pedidos separados del canal web', async () => {
+  const appHeaders = { 'X-Client-Channel': 'APP' };
+  const add = await request(app.getHttpServer())
+    .post('/api/commerce/cart/items')
+    .set(appHeaders)
+    .auth(token, { type: 'bearer' })
+    .send({ variantId, quantity: 1 });
+  expect(add.status).toBe(201);
+  expect(add.body.canal).toBe('APP');
+  expect(add.body.item_carrito[0].cantidad).toBe(1);
+
+  const webCart = await request(app.getHttpServer())
+    .get('/api/commerce/cart')
+    .auth(token, { type: 'bearer' });
+  expect(webCart.status).toBe(200);
+  expect(webCart.body.canal).toBe('WEB');
+  expect(webCart.body.item_carrito).toHaveLength(0);
+
+  const checkout = await request(app.getHttpServer())
+    .post('/api/commerce/checkout')
+    .set(appHeaders)
+    .auth(token, { type: 'bearer' })
+    .send({ locationId, address: 'Calle de prueba 123, La Paz', idempotency: randomUUID() });
+  expect(checkout.status).toBe(201);
+  expect(checkout.body.canal).toBe('APP');
+  expect(checkout.body.numero).toMatch(/^APP-/);
+  expect(checkout.body.pago[0].proveedor).toBe('SIMULADO_APP');
+
+  const payment = await request(app.getHttpServer())
+    .post(`/api/commerce/orders/${checkout.body.id}/payment`)
+    .set(appHeaders)
+    .auth(token, { type: 'bearer' })
+    .send({ decision: 'RECHAZAR', idempotency: randomUUID() });
+  expect(payment.status).toBe(201);
+  expect(payment.body.estado).toBe('CANCELADO');
+
+  const appOrders = await request(app.getHttpServer())
+    .get('/api/commerce/orders')
+    .set(appHeaders)
+    .auth(token, { type: 'bearer' });
+  expect(appOrders.status).toBe(200);
+  expect(appOrders.body.some((row: { id: string }) => row.id === checkout.body.id)).toBe(true);
+  expect(appOrders.body.every((row: { canal: string }) => row.canal === 'APP')).toBe(true);
+
+  const stock = await db.inventario.findUniqueOrThrow({
+    where: { variante_id_ubicacion_id: { variante_id: variantId, ubicacion_id: locationId } },
+  });
+  expect(stock.fisico).toBe(2);
+  expect(stock.reservado).toBe(0);
 });

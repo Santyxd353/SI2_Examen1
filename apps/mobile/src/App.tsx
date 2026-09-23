@@ -53,6 +53,7 @@ export function App() {
   async function loadCatalog(locationId = location?.id || '') {
     const requestId = ++catalogRequest.current;
     const params = new URLSearchParams();
+    params.set('channel', 'APP');
     if (locationId) params.set('location', locationId);
     if (brand) params.set('brand', brand);
     if (color) params.set('color', color);
@@ -174,6 +175,7 @@ export function App() {
         setSelection({ product, variant });
         setPage('ar');
       }}
+      onCatalogRefresh={() => loadCatalog(location?.id || '')}
       onAdminMode={
         isAdministrator(user)
           ? () => {

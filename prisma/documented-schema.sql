@@ -1015,7 +1015,7 @@ CREATE UNIQUE INDEX usuario_correo_ci ON usuario (lower(correo));
 
 CREATE UNIQUE INDEX direccion_principal ON direccion (usuario_id) WHERE predeterminada AND activa;
 
-CREATE UNIQUE INDEX carrito_activo ON carrito (usuario_id) WHERE estado = 'ACTIVO';
+CREATE UNIQUE INDEX carrito_activo ON carrito (usuario_id, canal) WHERE estado = 'ACTIVO';
 
 CREATE UNIQUE INDEX avatar_aprobado ON avatar (usuario_id) WHERE estado = 'APROBADO';
 

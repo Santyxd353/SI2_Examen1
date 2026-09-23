@@ -85,7 +85,9 @@ export class CatalogController {
     @Query('brand') brand = '',
     @Query('color') color = '',
     @Query('size') size = '',
+    @Query('channel') rawChannel = 'WEB',
   ) {
+    const channel = z.enum(['WEB', 'APP']).catch('WEB').parse(rawChannel.toUpperCase());
     const locationId = z.string().uuid().safeParse(location).success ? location : null;
     const searchFilter = search.trim().slice(0, 100);
     const brandFilter = brand.trim().slice(0, 100);
@@ -158,7 +160,7 @@ export class CatalogController {
                 variante_id_ubicacion_id_canal: {
                   variante_id: v.id,
                   ubicacion_id: locationId,
-                  canal: 'WEB',
+                  canal: channel,
                 },
               },
             })
@@ -168,7 +170,7 @@ export class CatalogController {
         const price = await this.db.precio_canal.findFirst({
           where: {
             variante_id: v.id,
-            canal: 'WEB',
+            canal: channel,
             desde: { lte: now },
             OR: [{ hasta: null }, { hasta: { gt: now } }],
           },
@@ -177,10 +179,10 @@ export class CatalogController {
         const stock = locationId
           ? await this.db.$queryRaw<
               { available: number }[]
-            >`SELECT COALESCE(SUM(GREATEST(i.disponible-d.stock_seguridad,0)),0)::int AS available FROM inventario i JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id JOIN ubicacion u ON u.id=i.ubicacion_id WHERE i.variante_id=${v.id}::uuid AND i.ubicacion_id=${locationId}::uuid AND d.canal='WEB' AND d.habilitada AND u.activa`
+            >`SELECT COALESCE(SUM(GREATEST(i.disponible-d.stock_seguridad,0)),0)::int AS available FROM inventario i JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id JOIN ubicacion u ON u.id=i.ubicacion_id WHERE i.variante_id=${v.id}::uuid AND i.ubicacion_id=${locationId}::uuid AND d.canal=${channel} AND d.habilitada AND u.activa`
           : await this.db.$queryRaw<
               { available: number }[]
-            >`SELECT COALESCE(SUM(GREATEST(i.disponible-d.stock_seguridad,0)),0)::int AS available FROM inventario i JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id JOIN ubicacion u ON u.id=i.ubicacion_id WHERE i.variante_id=${v.id}::uuid AND d.canal='WEB' AND d.habilitada AND u.activa`;
+            >`SELECT COALESCE(SUM(GREATEST(i.disponible-d.stock_seguridad,0)),0)::int AS available FROM inventario i JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id JOIN ubicacion u ON u.id=i.ubicacion_id WHERE i.variante_id=${v.id}::uuid AND d.canal=${channel} AND d.habilitada AND u.activa`;
         const locations = locationId
           ? await this.db.$queryRaw<
               {
@@ -194,7 +196,7 @@ export class CatalogController {
               FROM inventario i JOIN ubicacion u ON u.id=i.ubicacion_id
               JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id
               WHERE i.variante_id=${v.id}::uuid AND i.ubicacion_id=${locationId}::uuid
-                AND u.activa AND d.canal='WEB' AND d.habilitada
+                AND u.activa AND d.canal=${channel} AND d.habilitada
               ORDER BY CASE u.tipo WHEN 'TIENDA' THEN 0 ELSE 1 END,u.nombre`
           : await this.db.$queryRaw<
               {
@@ -207,7 +209,7 @@ export class CatalogController {
             >`SELECT u.id,u.nombre,u.tipo,u.direccion,GREATEST(i.disponible-d.stock_seguridad,0)::int AS disponible
               FROM inventario i JOIN ubicacion u ON u.id=i.ubicacion_id
               JOIN disponibilidad_canal d ON d.variante_id=i.variante_id AND d.ubicacion_id=i.ubicacion_id
-              WHERE i.variante_id=${v.id}::uuid AND u.activa AND d.canal='WEB' AND d.habilitada
+              WHERE i.variante_id=${v.id}::uuid AND u.activa AND d.canal=${channel} AND d.habilitada
               ORDER BY CASE u.tipo WHEN 'TIENDA' THEN 0 ELSE 1 END,u.nombre`;
         const model = await this.db.modelo_prenda.findFirst({
           where: { variante_id: v.id, estado: 'PUBLICADO' },

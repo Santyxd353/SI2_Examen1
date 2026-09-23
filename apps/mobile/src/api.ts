@@ -52,6 +52,7 @@ async function rotate() {
 
 export async function api(path: string, options: RequestInit = {}, retry = true): Promise<any> {
   const headers = new Headers(options.headers);
+  headers.set('X-Client-Channel', 'APP');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
   if (options.body) headers.set('Content-Type', 'application/json');
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
