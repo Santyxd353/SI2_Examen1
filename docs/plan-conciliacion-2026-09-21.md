@@ -1,6 +1,6 @@
 # Conciliación entre documento y sistema
 
-Documento rector: `C:/Users/ASUS/Desktop/FICCT/Estadistica 2/Plataforma_Vestidor3D_Grupo18.docx` (21 de septiembre de 2026). Código revisado: rama `codex/avance-ar-sucursales`, commit `9e22599`. El anexo 10 del Word es una evaluación de avance, no evidencia de que sus casos estén terminados. La cámara AR es la experiencia prioritaria; el avatar 3D permanece como componente legado mientras se valida AR.
+Documento rector: `C:/Users/ASUS/Desktop/FICCT/Estadistica 2/Plataforma_Vestidor3D_Grupo18.docx` (21 de septiembre de 2026). Código revisado: rama `desarrollo/lumina-vestidor3d`, commit `9e22599`. El anexo 10 del Word es una evaluación de avance, no evidencia de que sus casos estén terminados. La cámara AR es la experiencia prioritaria; el avatar 3D permanece como componente legado mientras se valida AR.
 
 ## Resultado exigido
 

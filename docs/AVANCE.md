@@ -2,7 +2,7 @@
 
 ## Auditoría de alcance · 20 de septiembre de 2026
 
-La rama `codex/avance-ar-sucursales` se comparó con los 44 requisitos funcionales y los 25 casos de uso del documento actualizado. El resultado verificable es **1 caso implementado de extremo a extremo, 17 parciales y 7 pendientes**. La matriz completa, con evidencia y brechas, está en `AUDITORIA_ALCANCE_2026-09-20.md`. El documento Word incorpora ahora el cambio de vestidor 3D a realidad aumentada, las reglas del catálogo compartido y el estado real de cada caso. La línea base estructurada se conserva en `linea-base.json` y el Word original permanece disponible en el historial de Git.
+La rama `desarrollo/lumina-vestidor3d` se comparó con los 44 requisitos funcionales y los 25 casos de uso del documento actualizado. El resultado verificable es **1 caso implementado de extremo a extremo, 17 parciales y 7 pendientes**. La matriz completa, con evidencia y brechas, está en `AUDITORIA_ALCANCE_2026-09-20.md`. El documento Word incorpora ahora el cambio de vestidor 3D a realidad aumentada, las reglas del catálogo compartido y el estado real de cada caso. La línea base estructurada se conserva en `linea-base.json` y el Word original permanece disponible en el historial de Git.
 
 También se corrigió el arranque local de PostgreSQL: `scripts/local-common.ps1` usa el puerto configurado en `DATABASE_URL` y deja de asumir siempre el puerto 55418.
 
@@ -18,7 +18,7 @@ La aplicación React Native incorpora un módulo nativo Android de MediaPipe Pos
 
 ## Incremento de compra web · 19 de septiembre de 2026
 
-En la rama `codex/avance-ar-sucursales` se añadió carrito persistente por cliente, pantalla «Mi carrito», pedido web con dirección libre y ubicación de origen, precio WEB vigente, control de stock de seguridad y reserva de 15 minutos. La reserva se libera al vencer o rechazar el pago de prueba; al aprobarlo se confirma el pedido y se registra la salida de inventario. Los reintentos de checkout y pago usan identificadores de idempotencia. «Mis pedidos» muestra el historial y permite solicitar devoluciones totales o parciales para revisión.
+En la rama `desarrollo/lumina-vestidor3d` se añadió carrito persistente por cliente, pantalla «Mi carrito», pedido web con dirección libre y ubicación de origen, precio WEB vigente, control de stock de seguridad y reserva de 15 minutos. La reserva se libera al vencer o rechazar el pago de prueba; al aprobarlo se confirma el pedido y se registra la salida de inventario. Los reintentos de checkout y pago usan identificadores de idempotencia. «Mis pedidos» muestra el historial y permite solicitar devoluciones totales o parciales para revisión.
 
 El pago es **simulado y explícito**: no integra ni cobra mediante una pasarela externa. Las devoluciones pueden revisarse desde la administración, aceptar cantidades aptas, reintegrar solo esas unidades y registrar un reembolso proporcional simulado; también se puede cancelar antes del despacho con reintegro y reembolso total. Permanecen pendientes la pasarela real y las reglas comerciales configurables. Por eso CU09, CU11 y CU14 siguen abiertos.
 

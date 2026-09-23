@@ -1,7 +1,7 @@
 # Auditoría de alcance e implementación
 
 Fecha de corte: 20 de septiembre de 2026  
-Rama revisada: `codex/avance-ar-sucursales`  
+Rama revisada: `desarrollo/lumina-vestidor3d`  
 Documento base: `Plataforma_Vestidor3D_Grupo18.docx`  
 Versión de código revisada: `9e22599`
 
