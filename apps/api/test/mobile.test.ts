@@ -37,6 +37,25 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
+test('registro móvil crea un Cliente e inicia una sesión renovable', async () => {
+  const registered = await request(app.getHttpServer())
+    .post('/api/auth/mobile/register')
+    .send({
+      nombres: 'Nueva',
+      apellidos: 'Clienta',
+      correo: `registro-mobile-${stamp}@grupo18.test`,
+      clave: 'RegistroSeguro2026!',
+    });
+  expect(registered.status).toBe(201);
+  expect(registered.body.user.roles).toEqual(['Cliente']);
+  expect(registered.body.accessToken).toEqual(expect.any(String));
+  expect(registered.body.refreshToken).toEqual(expect.any(String));
+  const logout = await request(app.getHttpServer())
+    .post('/api/auth/mobile/logout')
+    .send({ refreshToken: registered.body.refreshToken });
+  expect(logout.status).toBe(201);
+});
+
 test('login móvil entrega tokens y permite renovar la sesión una sola vez', async () => {
   const login = await request(app.getHttpServer())
     .post('/api/auth/mobile/login')

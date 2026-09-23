@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StatusBar as NativeStatusBar,
   StyleSheet,
   Text,
@@ -15,7 +16,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Polygon } from 'react-native-svg';
-import { API_URL, api, login, logout, restoreSession } from './api';
+import { API_URL, api, login, logout, registerClient, restoreSession } from './api';
 import { AdminDashboard } from './AdminDashboard';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
@@ -106,6 +107,7 @@ export function App() {
     return (
       <LoginScreen
         error={error}
+        onClearError={() => setError('')}
         onLogin={async (correo, clave) => {
           setError('');
           try {
@@ -113,6 +115,17 @@ export function App() {
             setUser(identity);
             setAdminClientMode(false);
             if (!isAdministrator(identity)) await loadCatalog('');
+          } catch (reason) {
+            setError((reason as Error).message);
+          }
+        }}
+        onRegister={async (nombres, apellidos, correo, clave) => {
+          setError('');
+          try {
+            const identity = await registerClient(nombres, apellidos, correo, clave);
+            setUser(identity);
+            setAdminClientMode(false);
+            await loadCatalog('');
           } catch (reason) {
             setError((reason as Error).message);
           }
@@ -197,56 +210,169 @@ export function App() {
 function LoginScreen({
   error,
   onLogin,
+  onRegister,
+  onClearError,
 }: {
   error: string;
   onLogin: (correo: string, clave: string) => Promise<void>;
+  onRegister: (nombres: string, apellidos: string, correo: string, clave: string) => Promise<void>;
+  onClearError: () => void;
 }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [nombres, setNombres] = useState('');
+  const [apellidos, setApellidos] = useState('');
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
+  const [confirmacion, setConfirmacion] = useState('');
+  const [localError, setLocalError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  function switchMode(next: 'login' | 'register') {
+    setMode(next);
+    setLocalError('');
+    onClearError();
+  }
+
   async function submit() {
+    const normalizedEmail = correo.trim().toLowerCase();
+    setLocalError('');
+    if (mode === 'register') {
+      if (nombres.trim().length < 2 || apellidos.trim().length < 2) {
+        setLocalError('Escribe tu nombre y apellido completos.');
+        return;
+      }
+      if (clave.length < 10) {
+        setLocalError('La contraseña debe tener al menos 10 caracteres.');
+        return;
+      }
+      if (clave !== confirmacion) {
+        setLocalError('Las contraseñas no coinciden.');
+        return;
+      }
+    }
     setBusy(true);
     try {
-      await onLogin(correo.trim().toLowerCase(), clave);
+      if (mode === 'register')
+        await onRegister(nombres.trim(), apellidos.trim(), normalizedEmail, clave);
+      else await onLogin(normalizedEmail, clave);
     } finally {
       setBusy(false);
     }
   }
+  const disabled =
+    busy ||
+    !correo.trim() ||
+    !clave ||
+    (mode === 'register' && (!nombres.trim() || !apellidos.trim() || !confirmacion));
+
   return (
     <KeyboardAvoidingView
       style={styles.login}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar style="dark" />
-      <Text style={styles.brand}>vestidor°</Text>
-      <Text style={styles.eyebrow}>APLICACIÓN MÓVIL</Text>
-      <Text style={styles.loginTitle}>Tu probador, ahora en la cámara.</Text>
-      <TextInput
-        accessibilityLabel="Correo"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholder="Correo"
-        style={styles.input}
-        value={correo}
-        onChangeText={setCorreo}
-      />
-      <TextInput
-        accessibilityLabel="Contraseña"
-        placeholder="Contraseña"
-        secureTextEntry
-        style={styles.input}
-        value={clave}
-        onChangeText={setClave}
-      />
-      {!!error && <Text style={styles.error}>{error}</Text>}
-      <Pressable
-        style={styles.primary}
-        disabled={busy || !correo || !clave}
-        onPress={() => void submit()}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.loginContent}
       >
-        <Text style={styles.primaryText}>{busy ? 'Ingresando…' : 'Ingresar'}</Text>
-      </Pressable>
-      <Text style={styles.privacy}>La sesión se almacena de forma segura en el dispositivo.</Text>
+        <Text style={styles.brand}>vestidor°</Text>
+        <Text style={styles.eyebrow}>APLICACIÓN MÓVIL</Text>
+        <Text style={styles.loginTitle}>
+          {mode === 'register' ? 'Crea tu cuenta de cliente.' : 'Tu probador, ahora en la cámara.'}
+        </Text>
+
+        <View style={styles.authTabs}>
+          <Pressable
+            style={[styles.authTab, mode === 'login' && styles.authTabActive]}
+            onPress={() => switchMode('login')}
+          >
+            <Text style={[styles.authTabText, mode === 'login' && styles.authTabTextActive]}>
+              Ingresar
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.authTab, mode === 'register' && styles.authTabActive]}
+            onPress={() => switchMode('register')}
+          >
+            <Text style={[styles.authTabText, mode === 'register' && styles.authTabTextActive]}>
+              Crear cuenta
+            </Text>
+          </Pressable>
+        </View>
+
+        {mode === 'register' && (
+          <>
+            <TextInput
+              accessibilityLabel="Nombres"
+              autoCapitalize="words"
+              placeholder="Nombres"
+              style={styles.input}
+              value={nombres}
+              onChangeText={setNombres}
+            />
+            <TextInput
+              accessibilityLabel="Apellidos"
+              autoCapitalize="words"
+              placeholder="Apellidos"
+              style={styles.input}
+              value={apellidos}
+              onChangeText={setApellidos}
+            />
+          </>
+        )}
+        <TextInput
+          accessibilityLabel="Correo"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          placeholder="Correo"
+          style={styles.input}
+          value={correo}
+          onChangeText={setCorreo}
+        />
+        <TextInput
+          accessibilityLabel="Contraseña"
+          placeholder={mode === 'register' ? 'Contraseña (mínimo 10 caracteres)' : 'Contraseña'}
+          secureTextEntry
+          style={styles.input}
+          value={clave}
+          onChangeText={setClave}
+        />
+        {mode === 'register' && (
+          <TextInput
+            accessibilityLabel="Confirmar contraseña"
+            placeholder="Confirmar contraseña"
+            secureTextEntry
+            style={styles.input}
+            value={confirmacion}
+            onChangeText={setConfirmacion}
+          />
+        )}
+        {!!(localError || error) && <Text style={styles.error}>{localError || error}</Text>}
+        <Pressable
+          style={[styles.primary, disabled && styles.primaryDisabled]}
+          disabled={disabled}
+          onPress={() => void submit()}
+        >
+          <Text style={styles.primaryText}>
+            {busy
+              ? mode === 'register'
+                ? 'Creando cuenta…'
+                : 'Ingresando…'
+              : mode === 'register'
+                ? 'Crear cuenta de cliente'
+                : 'Ingresar'}
+          </Text>
+        </Pressable>
+        {mode === 'register' && (
+          <Text style={styles.clientNotice}>
+            Esta opción crea únicamente cuentas con rol Cliente. El personal se administra desde la
+            web.
+          </Text>
+        )}
+        <Text style={styles.privacy}>La sesión se almacena de forma segura en el dispositivo.</Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -553,7 +679,15 @@ const styles = StyleSheet.create({
   tryButtonText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   empty: { color: '#777e73', textAlign: 'center', padding: 30 },
   error: { color: '#a64d38', backgroundColor: '#fff0eb', padding: 11, marginTop: 10 },
-  login: { flex: 1, justifyContent: 'center', padding: 28, backgroundColor: '#f2f1eb', gap: 13 },
+  login: { flex: 1, backgroundColor: '#f2f1eb' },
+  loginContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 52,
+    paddingBottom: 36,
+    gap: 13,
+  },
   loginTitle: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 32,
@@ -569,6 +703,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     color: '#252b24',
   },
+  authTabs: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#cbd0c5',
+    borderRadius: 8,
+    padding: 3,
+    backgroundColor: '#e8e9e2',
+    marginBottom: 3,
+  },
+  authTab: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  authTabActive: { backgroundColor: '#fff' },
+  authTabText: { color: '#6f776d', fontSize: 12, fontWeight: '700' },
+  authTabTextActive: { color: '#303a2e' },
   primary: {
     minHeight: 50,
     backgroundColor: '#303a2e',
@@ -577,7 +730,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 4,
   },
+  primaryDisabled: { opacity: 0.45 },
   primaryText: { color: '#fff', fontWeight: '600' },
+  clientNotice: {
+    color: '#566052',
+    backgroundColor: '#e4eadf',
+    borderRadius: 6,
+    padding: 10,
+    fontSize: 10,
+    lineHeight: 15,
+    textAlign: 'center',
+  },
   privacy: { color: '#7c8178', fontSize: 10, textAlign: 'center', marginTop: 8 },
   permission: {
     flex: 1,

@@ -95,6 +95,23 @@ export async function login(correo: string, clave: string): Promise<Identity> {
   return data.user;
 }
 
+export async function registerClient(
+  nombres: string,
+  apellidos: string,
+  correo: string,
+  clave: string,
+): Promise<Identity> {
+  const response = await fetch(`${API_URL}/auth/mobile/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombres, apellidos, correo, clave }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'No se pudo crear la cuenta.');
+  await saveTokens(data.accessToken, data.refreshToken);
+  return data.user;
+}
+
 export async function logout() {
   const currentRefresh = refreshToken;
   await clearSession();

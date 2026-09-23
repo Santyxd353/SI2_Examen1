@@ -139,10 +139,11 @@ export class AuthService {
     });
     return this.sessionResponse(id, sessionId, raw, res);
   }
-  async register(body: unknown, res: Response) {
+
+  private async createClient(body: unknown) {
     const data = registration.parse(body);
     const encrypted = await hash(data.clave, 12);
-    const u = await this.db.$transaction(async (tx) => {
+    return this.db.$transaction(async (tx) => {
       const role = await tx.rol.findUniqueOrThrow({ where: { nombre: 'Cliente' } });
       const user = await tx.usuario.create({
         data: {
@@ -160,6 +161,10 @@ export class AuthService {
       });
       return user;
     });
+  }
+
+  async register(body: unknown, res: Response) {
+    const u = await this.createClient(body);
     return this.issue(u.id, res);
   }
   async login(body: unknown, res: Response) {
@@ -173,20 +178,29 @@ export class AuthService {
       throw new UnauthorizedException('Correo o contraseña incorrectos.');
     return u;
   }
-  async mobileLogin(body: unknown) {
-    const u = await this.authenticate(body);
+  private async mobileIssue(userId: string) {
     const sessionId = randomUUID(),
-      raw = this.makeRefresh(u.id, sessionId);
+      raw = this.makeRefresh(userId, sessionId);
     await this.db.sesion.create({
       data: {
         id: sessionId,
-        usuario_id: u.id,
+        usuario_id: userId,
         refresh_hash: digest(raw),
         creada_en: new Date(),
         vence_en: new Date(Date.now() + 7 * 86400000),
       },
     });
-    return { ...(await this.tokenResponse(u.id, sessionId, raw)), refreshToken: raw };
+    return { ...(await this.tokenResponse(userId, sessionId, raw)), refreshToken: raw };
+  }
+
+  async mobileRegister(body: unknown) {
+    const u = await this.createClient(body);
+    return this.mobileIssue(u.id);
+  }
+
+  async mobileLogin(body: unknown) {
+    const u = await this.authenticate(body);
+    return this.mobileIssue(u.id);
   }
   async refresh(raw: string | undefined, res: Response) {
     if (!raw) throw new UnauthorizedException('Inicia sesión para continuar.');
@@ -310,6 +324,9 @@ export class AuthController {
   }
   @Post('mobile/login') mobileLogin(@Body() b: unknown) {
     return this.auth.mobileLogin(b);
+  }
+  @Post('mobile/register') mobileRegister(@Body() b: unknown) {
+    return this.auth.mobileRegister(b);
   }
   @Post('mobile/refresh') mobileRefresh(@Body() b: unknown) {
     return this.auth.mobileRefresh(b);
